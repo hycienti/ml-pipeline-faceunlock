@@ -1,0 +1,4 @@
+# Extra packages for the Colab training notebook only
+kaggle
+pandas
+seaborn
