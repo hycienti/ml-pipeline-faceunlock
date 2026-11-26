@@ -26,6 +26,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         MODEL_PATH=str(ROOT / "models" / "faceunlock_v1.keras"),
         METRICS_PATH=str(ROOT / "models" / "metrics_v1.json"),
         DATASET_STATS_PATH=str(ROOT / "models" / "dataset_stats.json"),
+        SAMPLE_FACES_PATH=str(ROOT / "models" / "sample_faces.jpg"),
         HEARTBEAT_SECONDS=60,
         MODEL_VERSION=1,
         MAX_FAILED_LOGINS=5,

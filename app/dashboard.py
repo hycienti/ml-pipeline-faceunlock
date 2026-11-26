@@ -4,7 +4,7 @@ import platform
 import time
 from pathlib import Path
 
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, abort, current_app, jsonify, send_file
 
 from app.auth import login_required
 from app.db import get_db
@@ -69,3 +69,12 @@ def metrics():
 def dataset_stats():
     stats = _read_json(current_app.config["DATASET_STATS_PATH"])
     return jsonify({"available": True, **stats} if stats else {"available": False})
+
+
+@bp.get("/api/sample-faces.jpg")
+@login_required
+def sample_faces():
+    path = Path(current_app.config["SAMPLE_FACES_PATH"])
+    if not path.exists():
+        abort(404)
+    return send_file(path, mimetype="image/jpeg")

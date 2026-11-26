@@ -84,3 +84,12 @@ def test_dataset_stats_endpoint(make_client, tmp_path):
     (tmp_path / "dataset_stats.json").write_text(json.dumps({"splits": {"train": 1}}))
     data = make_client().get("/api/dataset-stats").get_json()
     assert data["available"] is True and data["splits"] == {"train": 1}
+
+
+def test_sample_faces_image(make_client, tmp_path):
+    assert make_client(SAMPLE_FACES_PATH=str(tmp_path / "none.jpg")).get("/api/sample-faces.jpg").status_code == 404
+    from PIL import Image
+
+    Image.new("RGB", (8, 8)).save(tmp_path / "s.jpg")
+    response = make_client(SAMPLE_FACES_PATH=str(tmp_path / "s.jpg")).get("/api/sample-faces.jpg")
+    assert response.status_code == 200 and response.mimetype == "image/jpeg"

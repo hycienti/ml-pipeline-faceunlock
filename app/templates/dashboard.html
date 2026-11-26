@@ -4,8 +4,63 @@
 <form method="post" action="{{ url_for('auth.logout') }}"><button class="ghost">Log out ({{ username }})</button></form>
 {% endblock %}
 {% block content %}
-<section class="card">
+<div class="dash">
   <h1>Welcome, {{ username }}</h1>
-  <p class="muted">Dashboard panels arrive in the next steps.</p>
-</section>
+
+  <section class="panel">
+    <h2>Service status</h2>
+    <div class="tiles" id="status-tiles"></div>
+    <p class="muted small">Uptime over the last 24 hours, in 5-minute slots (green = heartbeat received).</p>
+    <div class="chart short"><canvas id="uptime-chart"></canvas></div>
+  </section>
+
+  <section class="panel">
+    <h2>Model performance</h2>
+    <div id="metrics-empty" class="muted" hidden>
+      No model report yet. Train in the notebook and put <code>metrics_v1.json</code> in <code>models/</code>.
+    </div>
+    <div id="metrics-body" hidden>
+      <p class="muted small">Best run: <b id="best-run"></b>. Decision threshold <b id="threshold"></b> (picked on validation pairs).</p>
+      <div class="tabs">
+        <button class="tab active" data-split="test">Our held-out people</button>
+        <button class="tab" data-split="official">LFW official pairs</button>
+      </div>
+      <div class="tiles" id="metric-tiles"></div>
+      <div class="grid2">
+        <div><h3>ROC curve</h3><div class="chart"><canvas id="roc-chart"></canvas></div></div>
+        <div>
+          <h3>What each technique bought</h3>
+          <table id="experiments"></table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>The data</h2>
+    <div id="data-empty" class="muted" hidden>
+      No dataset summary yet. Run the notebook export cell to create <code>models/dataset_stats.json</code>.
+    </div>
+    <div id="data-body" hidden>
+      <div class="grid2">
+        <div><h3>People and photos per split</h3><div class="chart"><canvas id="splits-chart"></canvas></div></div>
+        <div><h3>LFW: people by photos each (before the cap)</h3><div class="chart"><canvas id="ppp-chart"></canvas></div></div>
+        <div><h3>Kaggle faces: width (px)</h3><div class="chart"><canvas id="width-chart"></canvas></div></div>
+        <div><h3>Kaggle faces: brightness (0-255)</h3><div class="chart"><canvas id="brightness-chart"></canvas></div></div>
+      </div>
+      <p class="muted small" id="data-notes"></p>
+      <h3>Faces as the model sees them</h3>
+      <img class="samples" src="{{ url_for('dashboard.sample_faces') }}" alt="Sample face crops" onerror="this.hidden = true">
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Retrain</h2>
+    <p class="muted">Upload more faces and retrain the model (light or deep). Coming in the next step.</p>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
 {% endblock %}
