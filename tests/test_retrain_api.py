@@ -16,6 +16,7 @@ FAKE_RESULT = {
     "eval_pairs": 400,
     "old": {"auc": 0.70, "threshold": 0.5},
     "new": {"auc": 0.80, "threshold": 0.61},
+    "login_threshold": {"threshold": 0.47, "far_target": 0.02, "far": 0.02, "frr": 0.3},
 }
 
 
@@ -189,3 +190,14 @@ def test_default_retrain_uses_the_replay_set_when_it_ships_with_the_app(tmp_path
         }
     )
     assert app.config["RETRAIN_FN"].keywords["replay_zip"].endswith("replay_faces.zip")
+
+
+def test_promote_uses_the_login_threshold_not_the_noisy_eer(make_client, tmp_path):
+    client = make_client()
+    upload(client, tmp_path)
+    wait_for(client, "done")
+    client.post("/api/retrain/promote")
+    app = client.application
+    with app.app_context():
+        threshold = get_db().execute("SELECT threshold FROM model_versions").fetchone()[0]
+    assert threshold == 0.47

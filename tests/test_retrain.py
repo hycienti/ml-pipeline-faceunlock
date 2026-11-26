@@ -129,6 +129,7 @@ def test_run_retrain_with_replay_trains_on_old_and_new_people_and_checks_forgett
     assert result["classes"] == 19  # 12 original + 7 newly uploaded people
     for key in ("replay_old", "replay_new"):
         assert 0.0 <= result[key]["auc"] <= 1.0
+    assert result["login_threshold"]["far_target"] == 0.02  # chosen on the original validation pairs
 
 
 def test_run_retrain_without_replay_has_no_forgetting_check(tmp_path):
@@ -136,4 +137,4 @@ def test_run_retrain_without_replay_has_no_forgetting_check(tmp_path):
     build_embedding_model().save(base)
     data = validate_upload(str(make_zip(tmp_path / "up.zip", ten_people(3))), str(tmp_path / "data"))
     result = run_retrain("light", data, str(base), str(tmp_path / "new.keras"), lambda _: None, epochs=1)
-    assert "replay_old" not in result
+    assert "replay_old" not in result and "login_threshold" not in result

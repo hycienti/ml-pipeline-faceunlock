@@ -34,7 +34,8 @@ def load_verifier(app: Flask):
         app.config["MODEL_VERSION"] = active["version"]
         return app.config["VERIFIER_FACTORY"](active["path"], active["threshold"])
     metrics = json.loads(Path(app.config["METRICS_PATH"]).read_text())
-    return app.config["VERIFIER_FACTORY"](app.config["MODEL_PATH"], metrics["threshold"])
+    threshold = metrics.get("login_threshold", metrics["threshold"])
+    return app.config["VERIFIER_FACTORY"](app.config["MODEL_PATH"], threshold)
 
 
 def create_app(test_config: dict | None = None) -> Flask:

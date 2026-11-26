@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from src.evaluation import embed_faces, evaluate_pairs, pair_scores
+from src.evaluation import embed_faces, evaluate_pairs, pair_scores, threshold_for_far
 from src.preprocessing import scale_pixels
 
 
@@ -43,3 +43,15 @@ def test_embed_faces_batches_and_keeps_order():
     out = embed_faces(FakeModel(), faces, batch_size=2)
     assert out.shape == (5, 2)
     assert np.allclose(out, scale_pixels(faces).reshape(5, -1)[:, :2])
+
+
+def test_threshold_for_far_picks_the_loosest_threshold_within_the_stranger_budget():
+    scores = np.array([0.9, 0.8, 0.7, 0.6, 0.65, 0.3, 0.2, 0.1])
+    labels = np.array([1, 1, 1, 1, 0, 0, 0, 0])
+    assert threshold_for_far(scores, labels, far=0.0) == pytest.approx(0.7)
+    assert threshold_for_far(scores, labels, far=0.25) == pytest.approx(0.6)
+
+
+def test_threshold_for_far_never_returns_infinity():
+    scores, labels = np.array([0.5, 0.9]), np.array([0, 1])
+    assert np.isfinite(threshold_for_far(scores, labels, far=0.0))

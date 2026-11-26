@@ -8,6 +8,7 @@ import numpy as np
 from PIL import Image
 
 from src.evaluation import embed_faces, evaluate_pairs, pair_scores
+from src.operating_point import login_threshold
 from src.preprocessing import build_pairs, load_training_face
 from src.replay import load_replay
 from src.training import RunConfig, train
@@ -198,4 +199,5 @@ def run_retrain(
         result["replay_people"] = len(replay_people)
         result["replay_old"] = replay_old
         result["replay_new"] = _metrics(embedding, *replay_eval)
+        result["login_threshold"] = login_threshold(embedding, replay)
     return result

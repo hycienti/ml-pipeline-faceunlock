@@ -131,7 +131,7 @@ def promote():
             return _message(False, "There is no finished, unpromoted retrain to promote.", 409)
 
         result = json.loads(job["result"])
-        threshold = result["new"]["threshold"]
+        threshold = result.get("login_threshold", {}).get("threshold", result["new"]["threshold"])
         new_verifier = app.config["VERIFIER_FACTORY"](job["model_path"], threshold)
 
         updated = []

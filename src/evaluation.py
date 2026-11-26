@@ -47,3 +47,11 @@ def embed_faces(model, faces: np.ndarray, batch_size: int = 256) -> np.ndarray:
         for i in range(0, len(faces), batch_size)
     ]
     return np.concatenate(batches)
+
+
+def threshold_for_far(scores: np.ndarray, labels: np.ndarray, far: float) -> float:
+    """Loosest threshold that still lets in at most `far` of different-person pairs."""
+    fpr, tpr, thresholds = roc_curve(labels, scores)
+    allowed = np.where(fpr <= far)[0]
+    threshold = float(thresholds[allowed[np.argmax(tpr[allowed])]])
+    return threshold if np.isfinite(threshold) else float(np.max(scores)) + 1e-6
