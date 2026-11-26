@@ -24,3 +24,10 @@ def start(app) -> threading.Thread:
     thread = threading.Thread(target=beat, name="heartbeat", daemon=True)
     thread.start()
     return thread
+
+
+def record_stop(app) -> None:
+    """Mark a clean shutdown (idle scale-down, Ctrl-C). Time until the next start counts as up."""
+    with closing(sqlite3.connect(app.config["DB_PATH"])) as conn:
+        conn.execute("INSERT INTO app_stops (ts) VALUES (?)", (time.time(),))
+        conn.commit()

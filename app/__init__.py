@@ -1,3 +1,4 @@
+import atexit
 import functools
 import json
 import os
@@ -91,6 +92,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         db.get_db().commit()
     if not app.config["TESTING"]:
         heartbeat.start(app)
+        atexit.register(heartbeat.record_stop, app)
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(views.bp)

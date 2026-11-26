@@ -5,6 +5,7 @@ import pytest
 
 from app import create_app
 from app.dashboard import uptime_summary
+from app.heartbeat import record_stop
 from app.db import SCHEMA
 from tests.test_app_auth import RED, StubVerifier, login, register
 
@@ -32,11 +33,12 @@ def make_client(tmp_path):
     return build
 
 
-def memory_db(heartbeats, starts=()):
+def memory_db(heartbeats, starts=(), stops=()):
     db = sqlite3.connect(":memory:")
     db.executescript(SCHEMA)
     db.executemany("INSERT INTO heartbeats (ts) VALUES (?)", [(t,) for t in heartbeats])
     db.executemany("INSERT INTO app_starts (ts) VALUES (?)", [(t,) for t in starts])
+    db.executemany("INSERT INTO app_stops (ts) VALUES (?)", [(t,) for t in stops])
     return db
 
 
@@ -50,6 +52,39 @@ def test_uptime_summary_buckets_and_running_since():
     assert summary["running_since"] == now - 500
     assert summary["uptime_seconds"] == 500
     assert 0 < summary["uptime_pct"] <= 100
+
+
+def bucket_at(summary, t):
+    return next(b for b in summary["buckets"] if b["t"] <= t < b["t"] + 300)
+
+
+def test_time_idle_after_a_clean_stop_counts_as_up():
+    now = 1_000_000.0
+    # ran, shut down cleanly (idle), woke up again later
+    beats_while_awake = [now - 20000] + [now - 3000 + 60 * k for k in range(50)]
+    db = memory_db(beats_while_awake, starts=[now - 20000, now - 3000], stops=[now - 19900])
+    summary = uptime_summary(db, now=now)
+    sleeping = bucket_at(summary, now - 10000)
+    assert sleeping["up"] == 1 and sleeping["idle"] is True
+    assert summary["uptime_pct"] == 100.0  # idle is not downtime
+
+
+def test_a_gap_without_a_clean_stop_counts_as_down():
+    now = 1_000_000.0
+    db = memory_db([now - 20000, now - 60], starts=[now - 20000, now - 3000])  # crashed, no stop
+    summary = uptime_summary(db, now=now)
+    crashed = bucket_at(summary, now - 10000)
+    assert crashed["up"] == 0 and crashed["idle"] is False
+    assert summary["uptime_pct"] < 50
+
+
+def test_record_stop_marks_the_shutdown(tmp_path):
+    db_path = tmp_path / "t.db"
+    app = create_app({"TESTING": True, "DB_PATH": str(db_path), "PHOTO_DIR": str(tmp_path / "p"),
+                      "RETRAIN_DIR": str(tmp_path / "r"), "VERIFIER": StubVerifier()})
+    record_stop(app)
+    db = sqlite3.connect(db_path)
+    assert db.execute("SELECT COUNT(*) FROM app_stops").fetchone()[0] == 1
 
 
 def test_uptime_summary_without_data():

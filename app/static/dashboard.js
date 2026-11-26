@@ -32,7 +32,7 @@ async function loadStatus() {
       labels: data.buckets.map((b) => new Date(b.t * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })),
       datasets: [{
         data: data.buckets.map((b) => (b.up === null ? 0 : 1)),
-        backgroundColor: data.buckets.map((b) => (b.up === null ? "transparent" : b.up ? COLORS.accent : COLORS.bad)),
+        backgroundColor: data.buckets.map((b) => (b.up === null ? "transparent" : b.idle ? COLORS.blue : b.up ? COLORS.accent : COLORS.bad)),
         barPercentage: 1, categoryPercentage: 1,
       }],
     },

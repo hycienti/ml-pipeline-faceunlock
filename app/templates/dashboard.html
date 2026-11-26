@@ -10,7 +10,7 @@
   <section class="panel">
     <h2>Service status</h2>
     <div class="tiles" id="status-tiles"></div>
-    <p class="muted small">Uptime over the last 24 hours, in 5-minute slots (green = heartbeat received).</p>
+    <p class="muted small">Uptime over the last 24 hours, in 5-minute slots. Green: running. Blue: idle (asleep after a clean shutdown, wakes on the next request), which counts as up. Red: down (no heartbeat and no clean shutdown).</p>
     <div class="chart short"><canvas id="uptime-chart"></canvas></div>
   </section>
 
