@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Register · FaceUnlock{% endblock %}
+{% block nav %}<a href="{{ url_for('views.login_page') }}">Log in</a>{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Create your face login</h1>
+  <p class="muted">Pick a username and take 3 photos of your face: look straight on, with good light, and nobody else in the frame.</p>
+
+  <label for="username">Username</label>
+  <input id="username" autocomplete="off" placeholder="e.g. ada_l">
+
+  <div class="camera">
+    <video id="video" autoplay playsinline muted></video>
+    <p id="camera-error" class="error" hidden>Camera unavailable (it needs HTTPS or localhost, and permission). Upload 3 photos instead.</p>
+  </div>
+  <div id="thumbs" class="thumbs"></div>
+
+  <div class="row">
+    <button id="capture" type="button">Take photo 1 of 3</button>
+    <button id="reset" type="button" class="ghost">Start over</button>
+  </div>
+  <p class="muted">or upload exactly 3 photos: <input id="files" type="file" accept="image/*" multiple></p>
+
+  <button id="submit" type="button" disabled>Register</button>
+  <p id="status" role="status"></p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='camera.js') }}"></script>
+<script>
+  const REQUIRED = 3;
+  let shots = [];
+  const el = (id) => document.getElementById(id);
+  startCamera(el("video"), el("camera-error"));
+
+  function refresh() {
+    el("thumbs").innerHTML = "";
+    shots.forEach((blob) => {
+      const img = document.createElement("img");
+      img.src = URL.createObjectURL(blob);
+      el("thumbs").appendChild(img);
+    });
+    el("capture").textContent = `Take photo ${Math.min(shots.length + 1, REQUIRED)} of ${REQUIRED}`;
+    el("capture").disabled = shots.length >= REQUIRED;
+    el("submit").disabled = shots.length !== REQUIRED;
+  }
+
+  el("capture").onclick = async () => { shots.push(await snap(el("video"))); refresh(); };
+  el("reset").onclick = () => { shots = []; el("files").value = ""; refresh(); };
+  el("files").onchange = () => { shots = [...el("files").files].slice(0, REQUIRED); refresh(); };
+
+  el("submit").onclick = async () => {
+    const form = new FormData();
+    form.append("username", el("username").value);
+    shots.forEach((blob, i) => form.append("photos", blob, `photo${i + 1}.jpg`));
+    el("status").textContent = "Registering…";
+    const response = await fetch("/api/register", { method: "POST", body: form });
+    const data = await response.json();
+    el("status").textContent = data.message;
+    el("status").className = data.ok ? "ok" : "error";
+    if (data.ok) setTimeout(() => (location.href = "/login"), 1200);
+  };
+  refresh();
+</script>
+{% endblock %}

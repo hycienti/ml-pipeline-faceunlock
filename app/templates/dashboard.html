@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · FaceUnlock{% endblock %}
+{% block nav %}
+<form method="post" action="{{ url_for('auth.logout') }}"><button class="ghost">Log out ({{ username }})</button></form>
+{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Welcome, {{ username }}</h1>
+  <p class="muted">Dashboard panels arrive in the next steps.</p>
+</section>
+{% endblock %}

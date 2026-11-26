@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Log in · FaceUnlock{% endblock %}
+{% block nav %}<a href="{{ url_for('views.register_page') }}">Register</a>{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Log in with your face</h1>
+  <label for="username">Username</label>
+  <input id="username" autocomplete="off">
+
+  <div class="camera">
+    <video id="video" autoplay playsinline muted></video>
+    <p id="camera-error" class="error" hidden>Camera unavailable (it needs HTTPS or localhost, and permission). Upload a photo instead.</p>
+  </div>
+  <p class="muted">or upload a photo: <input id="file" type="file" accept="image/*"></p>
+
+  <button id="submit" type="button">Log in</button>
+  <p id="status" role="status"></p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='camera.js') }}"></script>
+<script>
+  const el = (id) => document.getElementById(id);
+  startCamera(el("video"), el("camera-error"));
+
+  el("submit").onclick = async () => {
+    const form = new FormData();
+    form.append("username", el("username").value);
+    const upload = el("file").files[0];
+    form.append("photo", upload || (await snap(el("video"))), "photo.jpg");
+    el("status").textContent = "Checking…";
+    const response = await fetch("/api/login", { method: "POST", body: form });
+    const data = await response.json();
+    el("status").textContent = data.message;
+    el("status").className = data.ok ? "ok" : "error";
+    if (data.ok) location.href = data.redirect;
+  };
+</script>
+{% endblock %}
