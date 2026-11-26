@@ -38,6 +38,13 @@
     ]
   },
   "photo_cap": 20,
+  "lfw": {
+    "people": 5749,
+    "single_photo_people": 4069,
+    "usable_people": 1680,
+    "top_person": "George_W_Bush",
+    "top_count": 530
+  },
   "detector_success_rate": 0.917,
   "kaggle": {
     "total_images": 7219,
@@ -47,6 +54,17 @@
       "L": 18,
       "RGBA": 12,
       "P": 1
+    },
+    "width_px": {
+      "min": 236,
+      "median": 633,
+      "max": 7680
+    },
+    "brightness_stats": {
+      "mean": 120.3,
+      "std": 38.9,
+      "min": 31.0,
+      "max": 232.6
     },
     "width": {
       "edges": [
