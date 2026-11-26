@@ -40,7 +40,8 @@ def load_verifier(app: Flask):
 
 
 def create_app(test_config: dict | None = None) -> Flask:
-    app = Flask(__name__, instance_path=str(ROOT / "instance"))
+    instance = os.environ.get("FACEUNLOCK_INSTANCE", str(ROOT / "instance"))  # persistent storage in production
+    app = Flask(__name__, instance_path=instance)
     app.config.update(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-only-change-me"),
         DB_PATH=str(Path(app.instance_path) / "faceunlock.db"),

@@ -48,3 +48,12 @@ def test_several_writers_do_not_lock_each_other_out(tmp_path):
     assert errors == []
     with app.app_context():
         assert get_db().execute("SELECT COUNT(*) FROM heartbeats").fetchone()[0] == 180
+
+
+def test_instance_folder_can_be_moved_to_persistent_storage_with_an_environment_variable(tmp_path, monkeypatch):
+    monkeypatch.setenv("FACEUNLOCK_INSTANCE", str(tmp_path / "persistent"))
+    app = create_app({"TESTING": True, "VERIFIER": StubVerifier()})
+    assert app.instance_path == str(tmp_path / "persistent")
+    for key in ("DB_PATH", "PHOTO_DIR", "RETRAIN_DIR", "DATASETS_DIR", "REPLAY_DIR", "INSIGHT_DIR", "ACTIVE_MODELS_DIR"):
+        assert app.config[key].startswith(str(tmp_path / "persistent")), key
+    assert (tmp_path / "persistent" / "faceunlock.db").exists()
