@@ -9,7 +9,7 @@ from PIL import Image
 
 from src.evaluation import embed_faces, evaluate_pairs, pair_scores
 from src.operating_point import login_threshold
-from src.preprocessing import build_pairs, load_training_face
+from src.preprocessing import build_pairs, detect_face_box, load_training_face
 from src.replay import load_replay
 from src.training import RunConfig, train
 
@@ -78,6 +78,33 @@ def validate_upload(zip_path: str, dest_dir: str) -> dict[str, list[str]]:
             + (f" ({singles} folders had only one photo)." if singles else ".")
         )
     return index
+
+
+def preprocess_report(data: dict[str, list[str]]) -> dict:
+    """What the training-time preprocessing will do to an upload: how often the face detector
+    finds exactly one face (otherwise a centre crop is used) and how big the photos are."""
+    photos = [p for paths in data.values() for p in paths]
+    found, sizes = 0, []
+    for path in photos:
+        with Image.open(path) as image:
+            rgb = np.asarray(image.convert("RGB"))
+        sizes.append(rgb.shape[:2])
+        found += detect_face_box(rgb) is not None
+    counts = sorted(len(paths) for paths in data.values())
+    height, width = np.median(sizes, axis=0) if sizes else (0, 0)
+    return {
+        "people": len(data),
+        "photos": len(photos),
+        "photos_per_person": {
+            "min": counts[0] if counts else 0,
+            "median": int(np.median(counts)) if counts else 0,
+            "max": counts[-1] if counts else 0,
+        },
+        "face_found": int(found),
+        "face_found_pct": round(100 * found / len(photos), 1) if photos else 0.0,
+        "center_crop_fallback": len(photos) - int(found),
+        "median_size": [int(height), int(width)],
+    }
 
 
 def _metrics(model, faces: np.ndarray, rows_a, rows_b, labels) -> dict:

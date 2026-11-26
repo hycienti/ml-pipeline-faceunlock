@@ -6,7 +6,7 @@ import pytest
 from PIL import Image
 
 from src.model import build_embedding_model
-from src.retrain import run_retrain, validate_upload
+from src.retrain import preprocess_report, run_retrain, validate_upload
 from tests.test_replay import make_replay_zip
 
 
@@ -138,3 +138,24 @@ def test_run_retrain_without_replay_has_no_forgetting_check(tmp_path):
     data = validate_upload(str(make_zip(tmp_path / "up.zip", ten_people(3))), str(tmp_path / "data"))
     result = run_retrain("light", data, str(base), str(tmp_path / "new.keras"), lambda _: None, epochs=1)
     assert "replay_old" not in result and "login_threshold" not in result
+
+
+def test_preprocess_report_counts_people_photos_and_detector_results(tmp_path):
+    zip_path = make_zip(tmp_path / "up.zip", ten_people(3))
+    data = validate_upload(str(zip_path), str(tmp_path / "out"))
+    report = preprocess_report(data)
+    assert report["people"] == 10 and report["photos"] == 30
+    assert report["photos_per_person"] == {"min": 3, "median": 3, "max": 3}
+    assert report["face_found"] == 0 and report["center_crop_fallback"] == 30  # noise has no faces
+    assert report["face_found_pct"] == 0.0 and report["median_size"] == [64, 64]
+
+
+def test_preprocess_report_finds_real_faces(tmp_path):
+    from pathlib import Path
+
+    folder = Path(__file__).parent.parent / "data/lfw/lfw-deepfunneled/lfw-deepfunneled/George_W_Bush"
+    photos = sorted(folder.glob("*.jpg"))[:4]
+    if len(photos) < 4:
+        pytest.skip("LFW not downloaded")
+    report = preprocess_report({"bush": [str(p) for p in photos]})
+    assert report["face_found"] == 4 and report["face_found_pct"] == 100.0
