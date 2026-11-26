@@ -46,6 +46,12 @@ CREATE TABLE IF NOT EXISTS uploaded_datasets (
     created_at REAL NOT NULL,
     uploaded_by TEXT
 );
+CREATE TABLE IF NOT EXISTS live_evaluations (
+    id INTEGER PRIMARY KEY,
+    model_version INTEGER NOT NULL,
+    ts REAL NOT NULL,
+    result TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS model_versions (
     version INTEGER PRIMARY KEY,
     path TEXT NOT NULL,

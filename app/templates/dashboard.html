@@ -82,6 +82,23 @@
   </section>
 
   <section class="panel">
+    <h2>Evaluation in production</h2>
+    <p class="muted small">The numbers above come from the training notebook. This panel evaluates the model that is serving requests <b>right now</b>, on held-out validation pairs, through the same pipeline a real login uses. Every run is saved, so you can watch quality across model versions.</p>
+    <div class="row">
+      <button id="evaluate-run" type="button">Evaluate live model now</button>
+      <span id="evaluate-status" class="muted" role="status"></span>
+    </div>
+    <div id="evaluate-body" hidden>
+      <div class="tiles" id="evaluate-tiles"></div>
+      <p class="muted small" id="evaluate-meta"></p>
+      <h3>Run history</h3>
+      <table id="evaluate-history"></table>
+    </div>
+    <h3>Real traffic, last 24 hours</h3>
+    <div class="tiles" id="traffic-tiles"></div>
+  </section>
+
+  <section class="panel">
     <h2>The data</h2>
     <div id="data-empty" class="muted" hidden>
       No dataset summary yet. Run the notebook export cell to create <code>models/dataset_stats.json</code>.

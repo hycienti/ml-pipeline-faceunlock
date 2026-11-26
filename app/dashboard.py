@@ -9,6 +9,8 @@ from flask import Blueprint, abort, current_app, jsonify, send_file
 from app.auth import login_required
 from app.db import get_db
 from src.insights import dataset_stories
+from src.live_evaluation import evaluate_live
+from src.replay import load_replay
 
 bp = Blueprint("dashboard", __name__)
 
@@ -99,3 +101,52 @@ def sample_faces():
     if not path.exists():
         abort(404)
     return send_file(path, mimetype="image/jpeg")
+
+
+def _evaluation_dict(row) -> dict:
+    return {"id": row["id"], "model_version": row["model_version"], "ts": row["ts"], **json.loads(row["result"])}
+
+
+def _evaluation_state(db) -> dict:
+    rows = db.execute("SELECT * FROM live_evaluations ORDER BY id DESC LIMIT 10").fetchall()
+    since = time.time() - 24 * 3600
+    attempts, passes = db.execute(
+        "SELECT COUNT(*), COALESCE(SUM(success), 0) FROM login_events WHERE ts > ?", (since,)
+    ).fetchone()
+    return {
+        "latest": _evaluation_dict(rows[0]) if rows else None,
+        "history": [_evaluation_dict(r) for r in rows],
+        "traffic": {
+            "window_hours": 24,
+            "attempts": attempts,
+            "passes": passes,
+            "pass_rate": round(passes / attempts, 3) if attempts else None,
+        },
+    }
+
+
+@bp.get("/api/evaluate")
+@login_required
+def evaluation():
+    return jsonify(_evaluation_state(get_db()))
+
+
+@bp.post("/api/evaluate")
+@login_required
+def run_evaluation():
+    """Evaluate the model that is serving requests right now and keep the result."""
+    zip_path = Path(current_app.config["REPLAY_ZIP"])
+    if not zip_path.exists():
+        return jsonify(ok=False, message="The replay set (models/replay_faces.zip) is missing, so there are no validation pairs to evaluate on."), 503
+    replay = load_replay(str(zip_path), current_app.config["REPLAY_DIR"])
+    try:
+        result = evaluate_live(current_app.config["VERIFIER"], replay)
+    except ValueError as error:
+        return jsonify(ok=False, message=str(error)), 422
+    db = get_db()
+    db.execute(
+        "INSERT INTO live_evaluations (model_version, ts, result) VALUES (?, ?, ?)",
+        (current_app.config["MODEL_VERSION"], time.time(), json.dumps(result)),
+    )
+    db.commit()
+    return jsonify(ok=True, **_evaluation_state(db))

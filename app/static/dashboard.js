@@ -133,6 +133,35 @@ async function loadInsights() {
   }, options: { plugins: { legend: { display: false }, tooltip: { enabled: true } }, scales: { y: { suggestedMin: 0 } } } });
 }
 
+function renderEvaluation(state) {
+  const t = state.traffic;
+  $("traffic-tiles").innerHTML =
+    tile("Login attempts", t.attempts) + tile("Passed", t.passes) +
+    tile("Pass rate", t.pass_rate == null ? "n/a" : pct(t.pass_rate), "includes deliberate wrong-face tests");
+  const latest = state.latest;
+  $("evaluate-body").hidden = !latest;
+  if (!latest) return;
+  const m = latest.metrics;
+  $("evaluate-tiles").innerHTML = [["accuracy", "Accuracy"], ["precision", "Precision"], ["recall", "Recall"], ["f1", "F1"], ["auc", "AUC"], ["far", "False accept"], ["frr", "False reject"]]
+    .map(([k, label]) => tile(label, k === "auc" ? m[k].toFixed(3) : pct(m[k]))).join("");
+  $("evaluate-meta").textContent = `Model v${latest.model_version}, ${latest.pairs_evaluated} validation pairs` + (latest.pairs_skipped_no_face ? ` (${latest.pairs_skipped_no_face} skipped: no single face found)` : "") + `, threshold ${latest.threshold.toFixed(3)}, took ${latest.seconds}s, run ${new Date(latest.ts * 1000).toLocaleString()}.`;
+  $("evaluate-history").innerHTML = "<tr><th>When</th><th>Model</th><th>Accuracy</th><th>F1</th><th>AUC</th></tr>" +
+    state.history.map((r) => `<tr><td>${new Date(r.ts * 1000).toLocaleString()}</td><td>v${r.model_version}</td><td>${pct(r.metrics.accuracy)}</td><td>${pct(r.metrics.f1)}</td><td>${r.metrics.auc.toFixed(3)}</td></tr>`).join("");
+}
+
+async function loadEvaluation() { renderEvaluation(await getJSON("/api/evaluate")); }
+
+$("evaluate-run").onclick = async () => {
+  $("evaluate-run").disabled = true;
+  $("evaluate-status").textContent = "Evaluating the live model on the validation pairs…";
+  const data = await (await fetch("/api/evaluate", { method: "POST" })).json();
+  $("evaluate-run").disabled = false;
+  if (!data.ok) { $("evaluate-status").textContent = data.message; $("evaluate-status").className = "error"; return; }
+  $("evaluate-status").className = "muted";
+  $("evaluate-status").textContent = "Done.";
+  renderEvaluation(data);
+};
+
 const RESULT_ROWS = [["auc", "AUC", false], ["accuracy", "Accuracy", true], ["f1", "F1", true], ["far", "False accept", true], ["frr", "False reject", true]];
 let pollTimer;
 
@@ -243,6 +272,7 @@ $("predict-file").onchange = () => { if ($("predict-file").files[0]) predict($("
 
 loadStatus();
 loadMetrics();
+loadEvaluation();
 loadData();
 pollRetrain();
 loadInsights();
