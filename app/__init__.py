@@ -8,7 +8,7 @@ from pathlib import Path
 
 from flask import Flask
 
-from app import auth, dashboard, db, heartbeat, insights, retrain_routes, views
+from app import auth, dashboard, db, heartbeat, insights, predict, retrain_routes, views
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -99,6 +99,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(views.bp)
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(insights.bp)
+    app.register_blueprint(predict.bp)
     app.register_blueprint(retrain_routes.bp)
     if not app.config["TESTING"] and Path(app.config["REPLAY_ZIP"]).exists():
         threading.Thread(target=insights._dataset, args=(app,), daemon=True, name="insight-warmup").start()

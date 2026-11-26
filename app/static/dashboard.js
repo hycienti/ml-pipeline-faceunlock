@@ -191,6 +191,28 @@ $("promote").onclick = async () => {
   if (data.ok) setTimeout(() => location.reload(), 1200);
 };
 
+async function predict(blob) {
+  $("predict-preview").src = URL.createObjectURL(blob);
+  $("predict-preview").hidden = false;
+  $("predict-result").textContent = "Predicting…";
+  $("predict-result").className = "muted";
+  const form = new FormData();
+  form.append("photo", blob, "photo.jpg");
+  const data = await (await fetch("/api/predict", { method: "POST", body: form })).json();
+  if (!data.ok) { $("predict-result").textContent = data.message; $("predict-result").className = "error"; $("predict-table").hidden = true; return; }
+  $("predict-result").className = data.match ? "ok" : "muted";
+  $("predict-result").textContent = data.match
+    ? `Prediction: ${data.prediction} (similarity ${data.score.toFixed(2)}, needs ${data.threshold.toFixed(2)})`
+    : `Prediction: unknown person. The closest registered face scored ${data.score == null ? "n/a" : data.score.toFixed(2)}, below the ${data.threshold.toFixed(2)} needed.`;
+  $("predict-table").hidden = !data.candidates.length;
+  $("predict-table").innerHTML = "<tr><th>Closest registered people</th><th>Similarity</th><th>Match</th></tr>" +
+    data.candidates.map((c) => `<tr><td>${c.username}</td><td>${c.score.toFixed(3)}</td><td>${c.match ? "yes" : "no"}</td></tr>`).join("");
+}
+
+startCamera($("predict-video"), $("predict-camera-error"));
+$("predict-snap").onclick = async () => { try { predict(await snap($("predict-video"))); } catch { $("predict-result").textContent = "No camera frame. Upload an image instead."; } };
+$("predict-file").onchange = () => { if ($("predict-file").files[0]) predict($("predict-file").files[0]); };
+
 loadStatus();
 loadMetrics();
 loadData();

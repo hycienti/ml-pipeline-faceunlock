@@ -157,3 +157,6 @@ def test_locked_users_stay_locked_even_with_a_no_face_photo(client):
     for _ in range(5):
         login(client, "alice", color=GREEN)
     assert login(client, "alice", color=BLACK).status_code == 429
+
+
+BLUE = (0, 0, 255)
