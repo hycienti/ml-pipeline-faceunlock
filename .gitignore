@@ -22,3 +22,5 @@ data/lfw/
 data/human-faces/
 data/cache/
 data/demo/
+data/val/*
+!data/val/.gitkeep

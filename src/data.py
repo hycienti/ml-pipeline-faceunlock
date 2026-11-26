@@ -1,5 +1,6 @@
 import csv
 import random
+import shutil
 from pathlib import Path
 
 
@@ -40,3 +41,20 @@ def build_lfw_splits(
         "val": {n: index[n] for n in names[n_test : n_test + n_val]},
         "train": {n: index[n] for n in names[n_test + n_val :]},
     }
+
+
+def export_splits(splits: dict[str, dict[str, list[str]]], dest: str) -> dict[str, int]:
+    """Copy each split's photos into dest/<split>/<person>/<photo>. Safe to re-run."""
+    counts = {}
+    for split, index in splits.items():
+        copied = 0
+        for person, photos in index.items():
+            folder = Path(dest) / split / person
+            folder.mkdir(parents=True, exist_ok=True)
+            for photo in photos:
+                target = folder / Path(photo).name
+                if not target.exists():
+                    shutil.copy(photo, target)
+                copied += 1
+        counts[split] = copied
+    return counts

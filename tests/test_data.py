@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from src.data import build_lfw_splits
+from src.data import build_lfw_splits, export_splits
 
 
 def make_fake_lfw(root: Path, people: dict[str, int], official_test: list[str]):
@@ -55,3 +55,21 @@ def test_real_lfw_matches_the_numbers_reported_in_the_notebook():
     splits = build_lfw_splits(REAL_LFW)
     counts = {k: (len(v), sum(map(len, v.values()))) for k, v in splits.items()}
     assert counts == {"train": (830, 3505), "val": (118, 530), "test": (236, 1186)}
+
+
+def test_export_splits_copies_each_photo_into_split_and_person_folders(fake_lfw, tmp_path):
+    splits = build_lfw_splits(fake_lfw)
+    counts = export_splits(splits, tmp_path / "data")
+    for split, index in splits.items():
+        assert counts[split] == sum(len(photos) for photos in index.values())
+        for person, photos in index.items():
+            copied = sorted(p.name for p in (tmp_path / "data" / split / person).glob("*.jpg"))
+            assert copied == sorted(Path(p).name for p in photos)
+
+
+def test_export_splits_can_be_rerun_without_duplicating(fake_lfw, tmp_path):
+    splits = build_lfw_splits(fake_lfw)
+    first = export_splits(splits, tmp_path / "data")
+    again = export_splits(splits, tmp_path / "data")
+    assert first == again
+    assert len(list((tmp_path / "data").rglob("*.jpg"))) == sum(first.values())
