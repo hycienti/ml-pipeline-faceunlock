@@ -9,6 +9,7 @@ from pathlib import Path
 
 from flask import Flask
 
+from src.prediction import PREDICT_THRESHOLD_MARGIN
 from app import auth, dashboard, db, heartbeat, insights, predict, retrain_routes, views
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -75,6 +76,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         RETRAIN_RECOMMEND_PEOPLE=int(os.environ.get("RETRAIN_RECOMMEND_PEOPLE", 10)),
         AUTO_RETRAIN_PEOPLE=int(os.environ.get("AUTO_RETRAIN_PEOPLE", 0)),  # 0 = never retrain automatically
         MODEL_VERSION=1,
+        # extra similarity /api/predict demands on top of the login bar for a 15-person gallery (see predict_bar)
+        PREDICT_THRESHOLD_MARGIN=float(os.environ.get("PREDICT_THRESHOLD_MARGIN", PREDICT_THRESHOLD_MARGIN)),
         MAX_FAILED_LOGINS=5,
         LOCKOUT_SECONDS=300,
         MAX_CONTENT_LENGTH=512 * 1024 * 1024,  # retrain zips can be large

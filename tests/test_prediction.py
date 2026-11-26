@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from src.prediction import FaceVerifier
+from src.prediction import PREDICT_THRESHOLD_MARGIN, FaceVerifier, predict_bar
 
 LFW_DIR = Path(__file__).parent.parent / "data/lfw/lfw-deepfunneled/lfw-deepfunneled"
 
@@ -84,3 +84,14 @@ def test_compare_scores_an_embedding_against_a_template(verifier):
     assert accepted and score == pytest.approx(1.0, abs=1e-5)
     accepted, score = verifier.compare(-template, template)
     assert not accepted and score == pytest.approx(-1.0, abs=1e-5)
+
+
+def test_predict_bar_grows_with_the_number_of_registered_people():
+    assert predict_bar(0.5, 0) == predict_bar(0.5, 1) == 0.5  # one person: same as the 1:1 login
+    assert predict_bar(0.5, 15) == pytest.approx(0.5 + PREDICT_THRESHOLD_MARGIN)
+    bars = [predict_bar(0.5, n) for n in (1, 2, 4, 8, 15, 30, 100)]
+    assert bars == sorted(bars) and len(set(bars)) == len(bars)
+
+
+def test_predict_bar_scales_with_a_custom_margin():
+    assert predict_bar(0.4, 15, margin=0.2) == pytest.approx(0.6)
