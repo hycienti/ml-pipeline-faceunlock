@@ -7,7 +7,7 @@ has been up, what the data looks like, and lets anyone upload new faces and retr
 | | |
 |---|---|
 | **Video demo** | _TODO: YouTube link (added after deployment)_ |
-| **Live app** | _TODO: public URL (added after deployment)_ |
+| **Live app** | https://h-igweze--faceunlock-faceunlock-web.us-east.modal.run (the first request after idle takes about 15 s to wake the container) |
 | **Repo** | https://github.com/hycienti/ml-pipeline-faceunlock |
 
 ## What it is
@@ -214,6 +214,13 @@ median response climbs to almost 4 seconds. Each added container takes a share o
 2 to 3 containers is larger than linear and I cannot fully explain it; it is probably CPU-quota throttling in the
 busier setups. Each setup was run once for 60 seconds on one laptop, so read the numbers as indicative, not
 precise. Raw Locust CSVs and the generated summary are in `results/flood/`.
+
+**Production check.** The same test against the live Modal deployment (one container with 2 CPUs, flooded from my
+laptop over the internet): 794 requests, 0 failures, 14.8 requests per second, median 3.6 s, 95th percentile 4.1 s.
+That matches the single local container (12.2 requests per second, median 3.9 s). Even the light status call took
+about 3.4 s, because every request queues behind the same two CPUs. Production runs one container by design, since
+the database is SQLite with a single writer; scaling out is done with the Docker setup above. Files are in
+`results/flood_modal/`.
 
 Reproduce: `python scripts/flood_experiment.py` (needs Docker and `pip install -r requirements.txt`). The same
 `locustfile.py` runs against any running instance, for example the deployed one:
