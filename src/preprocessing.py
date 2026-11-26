@@ -9,15 +9,24 @@ _DETECTOR = cv2.CascadeClassifier(
 )
 
 
-def detect_and_crop(image: np.ndarray, margin: float = 0.2) -> np.ndarray | None:
+def detect_face_box(image: np.ndarray) -> tuple[int, int, int, int] | None:
+    """(x, y, width, height) of the one face in the image, or None for zero or several faces."""
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     faces = _DETECTOR.detectMultiScale(
         gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60)
     )
     if len(faces) != 1:
         return None
-
     x, y, w, h = faces[0]
+    return int(x), int(y), int(w), int(h)
+
+
+def detect_and_crop(image: np.ndarray, margin: float = 0.2) -> np.ndarray | None:
+    box = detect_face_box(image)
+    if box is None:
+        return None
+
+    x, y, w, h = box
     pad_x, pad_y = int(w * margin), int(h * margin)
     x0, y0 = max(x - pad_x, 0), max(y - pad_y, 0)
     x1 = min(x + w + pad_x, image.shape[1])
