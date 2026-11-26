@@ -1,6 +1,6 @@
 flask
 tensorflow
-opencv-python
+opencv-python<5
 numpy
 scikit-learn
 matplotlib
