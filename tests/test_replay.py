@@ -47,3 +47,32 @@ def test_load_replay_extracts_once(tmp_path):
     marker.write_bytes(b"changed")
     load_replay(str(zip_path), str(tmp_path / "out"))  # second call must not re-extract
     assert marker.read_bytes() == b"changed"
+
+
+def test_load_replay_is_safe_when_several_containers_start_at_once(tmp_path):
+    import threading
+
+    zip_path = str(make_replay_zip(tmp_path / "replay.zip", 12, 4))
+    results, errors = [], []
+
+    def start():
+        try:
+            results.append(load_replay(zip_path, str(tmp_path / "shared")))
+        except Exception as error:  # the bug was a FileExistsError in one of them
+            errors.append(error)
+
+    threads = [threading.Thread(target=start) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert errors == []
+    assert len(results) == 8 and all(r["train"] == results[0]["train"] for r in results)
+    assert not list(tmp_path.glob(".replay-*"))  # no staging folders left behind
+
+
+def test_load_replay_replaces_a_half_extracted_folder(tmp_path):
+    dest = tmp_path / "out"
+    (dest / "train" / "junk").mkdir(parents=True)  # an interrupted earlier extraction: no marker
+    replay = load_replay(str(make_replay_zip(tmp_path / "r.zip", 12, 4)), str(dest))
+    assert "junk" not in replay["train"] and len(replay["train"]) == 12

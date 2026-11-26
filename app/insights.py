@@ -1,3 +1,4 @@
+import os
 import threading
 from pathlib import Path
 
@@ -54,7 +55,10 @@ def _dataset(app):
             return None
         arrays = (np.stack(embeddings).astype(np.float32), kept, paths)
         store.parent.mkdir(parents=True, exist_ok=True)
-        np.savez(store, embeddings=arrays[0], names=np.array(kept), paths=np.array(paths))
+        # write then rename, so another container never reads a half-written file
+        staging = store.with_name(f".{store.stem}-{os.getpid()}.npz")
+        np.savez(staging, embeddings=arrays[0], names=np.array(kept), paths=np.array(paths))
+        os.replace(staging, store)
         cache[version] = arrays
         return arrays
 
