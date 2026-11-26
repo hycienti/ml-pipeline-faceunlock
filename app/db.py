@@ -34,6 +34,18 @@ CREATE TABLE IF NOT EXISTS retrain_jobs (
     finished_at REAL,
     started_by TEXT
 );
+CREATE TABLE IF NOT EXISTS uploaded_datasets (
+    id INTEGER PRIMARY KEY,
+    filename TEXT NOT NULL,
+    status TEXT NOT NULL,
+    people INTEGER NOT NULL,
+    photos INTEGER NOT NULL,
+    folder TEXT NOT NULL,
+    report TEXT NOT NULL,
+    job_id INTEGER,
+    created_at REAL NOT NULL,
+    uploaded_by TEXT
+);
 CREATE TABLE IF NOT EXISTS model_versions (
     version INTEGER PRIMARY KEY,
     path TEXT NOT NULL,

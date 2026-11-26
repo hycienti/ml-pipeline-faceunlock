@@ -64,3 +64,6 @@ select, input[type=file] { padding: 8px 10px; border-radius: 8px; border: 1px so
 .photos figure, .lookalikes figure { margin: 0; width: 150px; font-size: .8rem; color: var(--muted); }
 .photos img, .lookalikes img { width: 150px; height: 150px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
 .lookalikes figcaption { color: var(--text); }
+
+.banner { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line); margin: 12px 0; color: var(--muted); }
+.banner.recommend { border-color: var(--amber, #f0b45a); color: #f0b45a; }

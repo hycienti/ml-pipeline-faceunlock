@@ -56,6 +56,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         ACTIVE_MODELS_DIR=str(Path(app.instance_path) / "models"),
         VERIFIER_FACTORY=verifier_from_files,
         HEARTBEAT_SECONDS=60,
+        RETRAIN_RECOMMEND_PEOPLE=10,
+        AUTO_RETRAIN_PEOPLE=0,  # 0 = never retrain automatically
         MODEL_VERSION=1,
         MAX_FAILED_LOGINS=5,
         LOCKOUT_SECONDS=300,
@@ -73,6 +75,8 @@ def create_app(test_config: dict | None = None) -> Flask:
             replay_zip=str(replay) if replay.exists() else None,
             replay_dir=app.config["REPLAY_DIR"],
         )
+    app.config.setdefault("DATASETS_DIR", str(Path(app.config["RETRAIN_DIR"]).parent / "datasets"))
+    Path(app.config["DATASETS_DIR"]).mkdir(parents=True, exist_ok=True)
     app.config["RETRAIN_LOCK"] = threading.Lock()
     app.config["PROMOTE_LOCK"] = threading.Lock()
     Path(app.config["RETRAIN_DIR"]).mkdir(parents=True, exist_ok=True)

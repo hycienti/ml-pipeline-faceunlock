@@ -137,9 +137,14 @@ let pollTimer;
 
 function renderJob(state) {
   const job = state.job;
-  if (!job) { $("retrain-status").textContent = `Live model: v${state.active_version}. No retrain yet.`; return; }
+  const banner = $("retrain-banner");
+  banner.hidden = !state.pending.datasets;
+  banner.textContent = `${state.pending.people} new people (${state.pending.photos} photos) are waiting.` + (state.recommend_retrain ? " Retraining is recommended." : " A few more people would make retraining worthwhile.");
+  banner.className = "banner" + (state.recommend_retrain ? " recommend" : "");
+  $("retrain-start").disabled = !state.pending.datasets || (job && job.status === "running");
+  if (!job) { $("retrain-status").textContent = `Live model: v${state.active_version}. No retrain yet.`; refreshDatasets(); return; }
   const running = job.status === "running";
-  $("retrain-start").disabled = running;
+  $("retrain-start").disabled = running || !state.pending.datasets;
   $("retrain-bar").hidden = !running;
   $("retrain-fill").style.width = Math.round(job.progress * 100) + "%";
   const label = { running: `Retraining (${job.mode}) ${Math.round(job.progress * 100)}%`, done: `Retrain (${job.mode}) finished.`, failed: "Retrain failed: " + (job.message || "unknown error") }[job.status];
@@ -166,18 +171,40 @@ function renderJob(state) {
     $("promote").hidden = job.promoted;
     if (job.promoted) $("retrain-note").textContent += " This model is live.";
   }
-  if (running) pollTimer = setTimeout(pollRetrain, 2000);
+  if (running) pollTimer = setTimeout(pollRetrain, 2000); else refreshDatasets();
 }
+
+function renderDatasets(list) {
+  $("dataset-list-wrap").hidden = !list.length;
+  $("dataset-table").innerHTML = "<tr><th>File</th><th>People</th><th>Photos</th><th>Faces found</th><th>Median size</th><th>Status</th></tr>" +
+    list.map((d) => `<tr><td>${d.filename}</td><td>${d.people}</td><td>${d.photos}</td><td>${d.report.face_found_pct}% (${d.report.center_crop_fallback} centre-cropped)</td><td>${d.report.median_size[1]}×${d.report.median_size[0]}px</td><td>${d.status === "saved" ? "waiting for retrain" : d.status}</td></tr>`).join("");
+}
+
+async function refreshDatasets() { renderDatasets((await getJSON("/api/datasets")).datasets); }
+
+$("dataset-upload").onclick = async () => {
+  const file = $("dataset-file").files[0];
+  if (!file) { $("dataset-status").textContent = "Choose a zip file first."; return; }
+  const form = new FormData();
+  form.append("dataset", file);
+  $("dataset-status").className = "muted";
+  $("dataset-status").textContent = "Uploading, checking and preprocessing…";
+  const data = await (await fetch("/api/datasets", { method: "POST", body: form })).json();
+  if (!data.ok) { $("dataset-status").textContent = data.message; $("dataset-status").className = "error"; return; }
+  const r = data.dataset.report;
+  $("dataset-status").className = "ok";
+  $("dataset-status").textContent = `Saved: ${r.people} people, ${r.photos} photos. The face detector found exactly one face in ${r.face_found_pct}% of them; the rest are centre-cropped.` + (data.auto_retrain_started ? " Enough new data arrived, so a light retrain started automatically." : "");
+  refreshDatasets();
+  pollRetrain();
+};
 
 async function pollRetrain() { clearTimeout(pollTimer); renderJob(await getJSON("/api/retrain/status")); }
 
 $("retrain-start").onclick = async () => {
-  const file = $("retrain-file").files[0];
-  if (!file) { $("retrain-status").textContent = "Choose a zip file first."; return; }
   const form = new FormData();
   form.append("mode", $("retrain-mode").value);
-  form.append("dataset", file);
-  $("retrain-status").textContent = "Uploading and checking the zip…";
+  $("retrain-status").className = "muted";
+  $("retrain-status").textContent = "Starting…";
   const data = await (await fetch("/api/retrain", { method: "POST", body: form })).json();
   if (!data.ok) { $("retrain-status").textContent = data.message; $("retrain-status").className = "error"; return; }
   pollRetrain();
