@@ -4,6 +4,12 @@
 services:
   web:
     build: .
+    cpus: 2        # a fixed share per container, so adding containers adds capacity (fair scaling tests)
+    environment:
+      # match the math libraries' thread pools to the CPU share, or they fight over cores they do not have
+      OMP_NUM_THREADS: "2"
+      TF_NUM_INTRAOP_THREADS: "2"
+      TF_NUM_INTEROP_THREADS: "2"
     volumes:
       - instance:/app/instance   # users, photos, uploads, models and the session key, shared by all containers
     expose:
