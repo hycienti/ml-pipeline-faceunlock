@@ -12,7 +12,7 @@ LFW_DIR = Path(__file__).parent.parent / "data/lfw/lfw-deepfunneled/lfw-deepfunn
 class ThumbnailModel:
     """Stand-in for the CNN: an 8x8 grayscale thumbnail, centred and unit length."""
 
-    def predict(self, x, verbose=0):
+    def predict(self, x, batch_size=None, verbose=0):
         thumb = x[:, ::20, ::20, 0].reshape(len(x), -1)
         thumb = thumb - thumb.mean(axis=1, keepdims=True)
         return thumb / (np.linalg.norm(thumb, axis=1, keepdims=True) + 1e-9)
@@ -57,7 +57,8 @@ def test_verify_accepts_same_photo_and_rejects_another_person(verifier):
     template = verifier.enroll([bush])
     accepted, score = verifier.verify(bush, template)
     assert accepted and score > 0.99
-    accepted, _ = verifier.verify(load("Colin_Powell"), template)
+    accepted, score = verifier.verify(load("Colin_Powell", 2), template)
+    assert score > -1.0  # a face WAS found: the rejection comes from the score, not a missing face
     assert not accepted
 
 
@@ -65,3 +66,13 @@ def test_verify_fails_cleanly_when_no_face(verifier):
     template = verifier.enroll([load("George_W_Bush")])
     accepted, score = verifier.verify(np.zeros((300, 300, 3), dtype=np.uint8), template)
     assert accepted is False and score < 0
+
+
+def test_embed_many_matches_embed_keeps_order_and_marks_failures(verifier):
+    bush, powell = load("George_W_Bush"), load("Colin_Powell", 2)
+    blank = np.zeros((300, 300, 3), dtype=np.uint8)
+    results = verifier.embed_many([bush, blank, powell])
+    assert results[1] is None
+    assert np.allclose(results[0], verifier.embed(bush))
+    assert np.allclose(results[2], verifier.embed(powell))
+    assert verifier.embed_many([]) == []

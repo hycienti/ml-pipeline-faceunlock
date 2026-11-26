@@ -14,12 +14,24 @@ class FaceVerifier:
 
         return cls(keras.models.load_model(model_path), threshold)
 
+    def embed_many(self, images: list[np.ndarray], batch_size: int = 64) -> list[np.ndarray | None]:
+        """Embed many photos in batches; None for any photo without exactly one face."""
+        results: list[np.ndarray | None] = [None] * len(images)
+        ready = []
+        for position, image in enumerate(images):
+            face = detect_and_crop(image)
+            if face is not None:
+                ready.append((position, scale_pixels(resize_face(face))))
+        if ready:
+            embeddings = self.model.predict(
+                np.stack([x for _, x in ready]), batch_size=batch_size, verbose=0
+            )
+            for (position, _), embedding in zip(ready, embeddings):
+                results[position] = embedding
+        return results
+
     def embed(self, image: np.ndarray) -> np.ndarray | None:
-        face = detect_and_crop(image)
-        if face is None:
-            return None
-        x = scale_pixels(resize_face(face))[None]
-        return self.model.predict(x, verbose=0)[0]
+        return self.embed_many([image])[0]
 
     def enroll(self, images: list[np.ndarray]) -> np.ndarray:
         embeddings = []
