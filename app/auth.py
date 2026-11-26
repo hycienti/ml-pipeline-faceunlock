@@ -14,7 +14,7 @@ bp = Blueprint("auth", __name__)
 USERNAME_RE = re.compile(r"[A-Za-z0-9_.-]{3,30}")
 REQUIRED_PHOTOS = 3
 LOGIN_FAILED = "Login failed."
-NO_FACE = "We could not find exactly one face in that photo. Face the camera in good light, alone in the frame."
+NO_FACE = "Exactly one face is needed in the photo, and none or several were found. Face the camera in good light, alone in the frame."
 
 
 def login_required(view):

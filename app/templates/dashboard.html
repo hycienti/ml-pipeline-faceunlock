@@ -67,7 +67,7 @@
     <div id="metrics-body" hidden>
       <p class="muted small">Best run: <b id="best-run"></b>. Decision threshold <b id="threshold"></b> (picked on validation pairs).</p>
       <div class="tabs">
-        <button class="tab active" data-split="test">Our held-out people</button>
+        <button class="tab active" data-split="test">Held-out people</button>
         <button class="tab" data-split="official">LFW official pairs</button>
       </div>
       <div class="tiles" id="metric-tiles"></div>
@@ -120,7 +120,7 @@
 
   <section class="panel">
     <h2>Upload data, train and retrain</h2>
-    <p class="muted small">1. Upload a zip with one folder per person (<code>person_name/photo.jpg</code>: at least 10 people, 2+ photos each). It is checked, preprocessed and saved. 2. Then train whenever you are ready. Retraining (light or deep) starts from our own trained model and learns the new people while a sample of the original people keeps it from forgetting them.</p>
+    <p class="muted small">1. Upload a zip with one folder per person (<code>person_name/photo.jpg</code>: at least 10 people, 2+ photos each). It is checked, preprocessed and saved. 2. Then train whenever you are ready. Retraining (light or deep) starts from the trained model and learns the new people while a sample of the original people keeps it from forgetting them.</p>
     <div class="row">
       <input id="dataset-file" type="file" accept=".zip">
       <button id="dataset-upload" type="button">Upload and save</button>

@@ -52,7 +52,7 @@ def embedding_map(dataset: np.ndarray, user: np.ndarray, others: np.ndarray | No
     center = dataset.mean(axis=0)
     _, singular, axes = np.linalg.svd(dataset - center, full_matrices=False)
     axes = axes[:2]
-    if len(axes) < 2:  # degenerate data: pad so we always return 2D points
+    if len(axes) < 2:  # degenerate data: pad so the result is always 2D points
         axes = np.vstack([axes, np.zeros((2 - len(axes), dataset.shape[1]))])
 
     def project(matrix: np.ndarray) -> list[list[float]]:
@@ -103,7 +103,7 @@ def dataset_stories(stats: dict) -> list[dict]:
                 f"{lfw['single_photo_people']:,} of {lfw['people']:,} people ({single_pct:.1f}%) have a single photo, "
                 f"while {lfw['top_person'].replace('_', ' ')} alone has {lfw['top_count']}. Verification needs at least "
                 f"two photos of a person, so only {lfw['usable_people']:,} people ({usable_pct:.0f}%) are usable. "
-                f"We cap every person at {stats.get('photo_cap', 20)} photos so a few celebrities do not dominate "
+                f"Each person is capped at {stats.get('photo_cap', 20)} photos so a few celebrities do not dominate "
                 "what the model learns."
             ),
         })

@@ -12,14 +12,14 @@ has been up, what the data looks like, and lets anyone upload new faces and retr
 
 ## What it is
 
-The model is a CNN (MobileNetV2 backbone, ImageNet-pretrained, fine-tuned by us) that turns a face
+The model is a CNN (MobileNetV2 backbone, ImageNet-pretrained, fine-tuned by me) that turns a face
 into a 128-number fingerprint. Two photos of the same person land close together, photos of different
 people land far apart. The app compares fingerprints, never raw pixels.
 
 * **Register**: 3 photos are averaged into one stored fingerprint.
 * **Log in**: username + one photo. The photo's fingerprint must be close enough to the stored one.
 * **Predict**: upload any image and the model names the registered person it matches, says "possible match", or says unknown. It uses a stricter bar than login that grows with the number of registered people.
-* **Train and retrain**: upload a zip of new faces (one folder per person), then retrain from our own trained model (light or deep) or train a brand-new model from ImageNet weights.
+* **Train and retrain**: upload a zip of new faces (one folder per person), then retrain from the model I trained (light or deep) or train a brand-new model from ImageNet weights.
 * **Dashboard**: uptime, model metrics, ROC curve, dataset charts and what they mean, a live evaluation of
   the running model, and per-user insights (photo quality, where your face sits among others, look-alikes).
 
@@ -70,7 +70,7 @@ never saw during training. Training used a cumulative set of techniques (each ro
 
 Final model, at the validation-chosen equal-error threshold:
 
-| Metric | Our test people | LFW official pairs |
+| Metric | My held-out test people | LFW official pairs |
 |---|---|---|
 | Accuracy | 0.808 | 0.806 |
 | Precision | 0.798 | 0.802 |
@@ -182,7 +182,7 @@ python -m pytest tests -q -k "not retrain"      # fast suites; the retrain tests
      bad images and path tricks are rejected), preprocessed (the report shows how many photos have a detectable face),
      and saved to the database.
    * **Start** trains on every saved dataset, in one of three modes. **Light** retrains only the top layer (minutes).
-     **Deep** also fine-tunes the whole backbone (slow on a CPU). Both start from our own trained model and mix in a sample
+     **Deep** also fine-tunes the whole backbone (slow on a CPU). Both start from the model I trained and mix in a sample
      of the original people so it does not forget them. **Train from scratch** ignores the current model and trains a new one
      from ImageNet weights on the upload plus every original photo, the same recipe as the notebook (very slow on a CPU).
    * The dashboard shows old vs new on the uploaded people and on the original validation pairs ("did it forget?").
