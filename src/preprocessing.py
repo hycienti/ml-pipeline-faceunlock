@@ -1,3 +1,5 @@
+import random
+
 import cv2
 import numpy as np
 from PIL import Image
@@ -28,3 +30,25 @@ def preprocess(face: np.ndarray, size: int = 160) -> np.ndarray:
         (size, size), Image.Resampling.LANCZOS
     )
     return np.asarray(image, dtype=np.float32) / 127.5 - 1.0
+
+
+def build_pairs(
+    index: dict[str, list[str]], n_pairs: int, seed: int
+) -> list[tuple[str, str, int]]:
+    rng = random.Random(seed)
+    people = sorted(p for p, photos in index.items() if photos)
+    multi = [p for p in people if len(index[p]) >= 2]
+    if not multi or len(people) < 2:
+        raise ValueError("need 2+ people and at least one person with 2+ photos")
+
+    pairs = []
+    for i in range(n_pairs):
+        if i % 2 == 0:
+            person = rng.choice(multi)
+            a, b = rng.sample(index[person], 2)
+            pairs.append((a, b, 1))
+        else:
+            p1, p2 = rng.sample(people, 2)
+            pairs.append((rng.choice(index[p1]), rng.choice(index[p2]), 0))
+    rng.shuffle(pairs)
+    return pairs
