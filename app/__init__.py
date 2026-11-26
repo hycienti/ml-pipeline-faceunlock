@@ -2,6 +2,7 @@ import atexit
 import functools
 import json
 import os
+import secrets
 import threading
 import time
 from pathlib import Path
@@ -39,11 +40,25 @@ def load_verifier(app: Flask):
     return app.config["VERIFIER_FACTORY"](app.config["MODEL_PATH"], threshold)
 
 
+def _persistent_secret_key(folder: Path) -> str:
+    """A random session key stored once in the instance folder, so restarts and containers sharing
+    the folder agree on it. Exclusive creation means two first starts cannot write different keys."""
+    folder.mkdir(parents=True, exist_ok=True)
+    key_file = folder / "secret_key"
+    try:
+        descriptor = os.open(key_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        return key_file.read_text().strip()
+    with os.fdopen(descriptor, "w") as handle:
+        handle.write(secrets.token_hex(32))
+    return key_file.read_text().strip()
+
+
 def create_app(test_config: dict | None = None) -> Flask:
     instance = os.environ.get("FACEUNLOCK_INSTANCE", str(ROOT / "instance"))  # persistent storage in production
     app = Flask(__name__, instance_path=instance)
     app.config.update(
-        SECRET_KEY=os.environ.get("SECRET_KEY", "dev-only-change-me"),
+        SECRET_KEY=os.environ.get("SECRET_KEY"),  # else a random key kept in the instance folder
         DB_PATH=str(Path(app.instance_path) / "faceunlock.db"),
         PHOTO_DIR=str(Path(app.instance_path) / "photos"),
         MODEL_PATH=str(ROOT / "models" / "faceunlock_v1.keras"),
@@ -57,8 +72,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         ACTIVE_MODELS_DIR=str(Path(app.instance_path) / "models"),
         VERIFIER_FACTORY=verifier_from_files,
         HEARTBEAT_SECONDS=60,
-        RETRAIN_RECOMMEND_PEOPLE=10,
-        AUTO_RETRAIN_PEOPLE=0,  # 0 = never retrain automatically
+        RETRAIN_RECOMMEND_PEOPLE=int(os.environ.get("RETRAIN_RECOMMEND_PEOPLE", 10)),
+        AUTO_RETRAIN_PEOPLE=int(os.environ.get("AUTO_RETRAIN_PEOPLE", 0)),  # 0 = never retrain automatically
         MODEL_VERSION=1,
         MAX_FAILED_LOGINS=5,
         LOCKOUT_SECONDS=300,
@@ -68,6 +83,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         app.config.update(test_config)
 
     Path(app.config["DB_PATH"]).parent.mkdir(parents=True, exist_ok=True)
+    if not app.config.get("SECRET_KEY"):
+        app.config["SECRET_KEY"] = _persistent_secret_key(Path(app.instance_path))
     Path(app.config["PHOTO_DIR"]).mkdir(parents=True, exist_ok=True)
     if "RETRAIN_FN" not in app.config:
         replay = Path(app.config["REPLAY_ZIP"])

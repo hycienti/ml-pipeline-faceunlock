@@ -57,3 +57,42 @@ def test_instance_folder_can_be_moved_to_persistent_storage_with_an_environment_
     for key in ("DB_PATH", "PHOTO_DIR", "RETRAIN_DIR", "DATASETS_DIR", "REPLAY_DIR", "INSIGHT_DIR", "ACTIVE_MODELS_DIR"):
         assert app.config[key].startswith(str(tmp_path / "persistent")), key
     assert (tmp_path / "persistent" / "faceunlock.db").exists()
+
+
+def fresh_app(tmp_path, **extra):
+    return create_app(
+        {
+            "TESTING": True,
+            "DB_PATH": str(tmp_path / "t.db"),
+            "PHOTO_DIR": str(tmp_path / "photos"),
+            "RETRAIN_DIR": str(tmp_path / "retrain"),
+            "VERIFIER": StubVerifier(),
+            **extra,
+        }
+    )
+
+
+def test_session_key_is_random_persisted_and_shared_between_restarts(tmp_path, monkeypatch):
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.setenv("FACEUNLOCK_INSTANCE", str(tmp_path / "inst"))
+    first = fresh_app(tmp_path).config["SECRET_KEY"]
+    key_file = tmp_path / "inst" / "secret_key"
+    assert key_file.read_text().strip() == first and len(first) == 64
+    assert key_file.stat().st_mode & 0o777 == 0o600
+    assert first != "dev-only-change-me"
+    assert fresh_app(tmp_path).config["SECRET_KEY"] == first  # a restart keeps sessions valid
+
+
+def test_secret_key_environment_variable_wins_and_writes_no_file(tmp_path, monkeypatch):
+    monkeypatch.setenv("SECRET_KEY", "from-the-environment")
+    monkeypatch.setenv("FACEUNLOCK_INSTANCE", str(tmp_path / "inst"))
+    assert fresh_app(tmp_path).config["SECRET_KEY"] == "from-the-environment"
+    assert not (tmp_path / "inst" / "secret_key").exists()
+
+
+def test_retrain_trigger_settings_can_come_from_the_environment(tmp_path, monkeypatch):
+    assert fresh_app(tmp_path).config["AUTO_RETRAIN_PEOPLE"] == 0  # off unless asked for
+    monkeypatch.setenv("AUTO_RETRAIN_PEOPLE", "15")
+    monkeypatch.setenv("RETRAIN_RECOMMEND_PEOPLE", "5")
+    app = fresh_app(tmp_path)
+    assert app.config["AUTO_RETRAIN_PEOPLE"] == 15 and app.config["RETRAIN_RECOMMEND_PEOPLE"] == 5
