@@ -14,7 +14,7 @@ def start(app) -> threading.Thread:
 
     def beat():
         while True:
-            with closing(sqlite3.connect(app.config["DB_PATH"])) as conn:
+            with closing(sqlite3.connect(app.config["DB_PATH"], timeout=10)) as conn:
                 now = time.time()
                 conn.execute("INSERT INTO heartbeats (ts) VALUES (?)", (now,))
                 conn.execute("DELETE FROM heartbeats WHERE ts < ?", (now - KEEP_SECONDS,))
@@ -28,6 +28,6 @@ def start(app) -> threading.Thread:
 
 def record_stop(app) -> None:
     """Mark a clean shutdown (idle scale-down, Ctrl-C). Time until the next start counts as up."""
-    with closing(sqlite3.connect(app.config["DB_PATH"])) as conn:
+    with closing(sqlite3.connect(app.config["DB_PATH"], timeout=10)) as conn:
         conn.execute("INSERT INTO app_stops (ts) VALUES (?)", (time.time(),))
         conn.commit()

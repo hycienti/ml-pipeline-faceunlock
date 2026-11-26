@@ -45,7 +45,7 @@ def _latest_job(db):
 
 
 def _work(app, job_id: int, mode: str, data: dict, job_dir: Path, base_model: str) -> None:
-    with closing(sqlite3.connect(app.config["DB_PATH"])) as conn:
+    with closing(sqlite3.connect(app.config["DB_PATH"], timeout=10)) as conn:
 
         def progress(fraction: float) -> None:
             conn.execute("UPDATE retrain_jobs SET progress = ? WHERE id = ?", (fraction, job_id))

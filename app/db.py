@@ -64,7 +64,9 @@ CREATE TABLE IF NOT EXISTS model_versions (
 
 def get_db() -> sqlite3.Connection:
     if "db" not in g:
-        g.db = sqlite3.connect(current_app.config["DB_PATH"])
+        # WAL lets several processes or containers share one database file; a lock is waited for.
+        g.db = sqlite3.connect(current_app.config["DB_PATH"], timeout=10)
+        g.db.execute("PRAGMA journal_mode=WAL")
         g.db.row_factory = sqlite3.Row
     return g.db
 
