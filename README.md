@@ -192,7 +192,32 @@ python -m pytest tests -q -k "not retrain"      # fast suites; the retrain tests
 
 ## Flood simulation (Locust)
 
-_TODO: results with 1, 2 and 3 containers (latency and response time), added after deployment._
+Every request in the test is real work: the face is detected, cropped and run through the CNN. The app was
+flooded with [Locust](https://locust.io) while running as 1, 2 and 3 Docker containers behind an nginx load
+balancer (`docker compose up --scale web=N`), each container limited to 2 CPUs.
+
+60 simulated users (spawn rate 10 per second, 0.2 to 0.6 s between actions), 60 seconds per setup. Each user logs
+in once, then predicts a registered face (weight 4), predicts a stranger (2), logs in again (1) and loads the
+status API (1). Times are in milliseconds.
+
+| Containers | Requests | Failures | Requests/s | Median | 95th pct | 99th pct |
+|---|---|---|---|---|---|---|
+| 1 | 642 | 0 | 12.2 | 3,900 | 8,600 | 9,300 |
+| 2 | 1,409 | 0 | 26.0 | 1,800 | 3,100 | 4,100 |
+| 3 | 3,282 | 0 | 60.7 | 470 | 1,300 | 1,800 |
+
+![Throughput and response time by number of containers](results/flood/latency.png)
+
+What it shows: one container saturates its 2 CPUs at about 12 requests per second, so requests queue and the
+median response climbs to almost 4 seconds. Each added container takes a share of the load, throughput rises from
+12 to 61 requests per second and the median falls from 3.9 s to 0.47 s, with no failed requests. The step from
+2 to 3 containers is larger than linear and I cannot fully explain it; it is probably CPU-quota throttling in the
+busier setups. Each setup was run once for 60 seconds on one laptop, so read the numbers as indicative, not
+precise. Raw Locust CSVs and the generated summary are in `results/flood/`.
+
+Reproduce: `python scripts/flood_experiment.py` (needs Docker and `pip install -r requirements.txt`). The same
+`locustfile.py` runs against any running instance, for example the deployed one:
+`locust -f locustfile.py --headless -u 60 -r 10 -t 60s --host <url>`.
 
 ## Limitations (please read)
 
