@@ -159,3 +159,25 @@ def test_preprocess_report_finds_real_faces(tmp_path):
         pytest.skip("LFW not downloaded")
     report = preprocess_report({"bush": [str(p) for p in photos]})
     assert report["face_found"] == 4 and report["face_found_pct"] == 100.0
+
+
+def test_train_from_scratch_builds_a_fresh_model_instead_of_continuing_the_current_one(tmp_path):
+    base = tmp_path / "base.keras"
+    build_embedding_model().save(base)
+    data = validate_upload(str(make_zip(tmp_path / "up.zip", ten_people(3))), str(tmp_path / "data"))
+    replay_zip = make_replay_zip(tmp_path / "replay.zip", train_people=12, val_people=4)
+    progress = []
+
+    result = run_retrain(
+        "scratch", data, str(base), str(tmp_path / "new.keras"), progress.append, epochs=1,
+        replay_zip=str(replay_zip), replay_dir=str(tmp_path / "replay"),
+    )
+
+    assert result["mode"] == "scratch" and result["classes"] == 19
+    assert progress[-1] == 1.0 and progress == sorted(progress)
+    from tensorflow import keras
+    probe = np.random.default_rng(0).uniform(-1, 1, (2, 160, 160, 3)).astype("float32")
+    old = keras.models.load_model(base).predict(probe, verbose=0)
+    new = keras.models.load_model(tmp_path / "new.keras").predict(probe, verbose=0)
+    assert not np.allclose(old, new, atol=1e-3)  # not the base model's weights
+    assert np.allclose(np.linalg.norm(new, axis=1), 1.0, atol=1e-4)

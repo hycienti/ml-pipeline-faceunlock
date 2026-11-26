@@ -181,8 +181,8 @@ def list_datasets():
 def start():
     """Retrain on every saved-but-unused dataset (an attached zip is saved first)."""
     mode = request.form.get("mode", "")
-    if mode not in ("light", "deep"):
-        return _message(False, "Choose light or deep retraining.", 400)
+    if mode not in ("light", "deep", "scratch"):
+        return _message(False, "Choose light retraining, deep retraining, or train from scratch.", 400)
     app = current_app._get_current_object()
     db = get_db()
 

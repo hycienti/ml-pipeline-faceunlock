@@ -201,3 +201,9 @@ def test_promote_uses_the_login_threshold_not_the_noisy_eer(make_client, tmp_pat
     with app.app_context():
         threshold = get_db().execute("SELECT threshold FROM model_versions").fetchone()[0]
     assert threshold == 0.47
+
+
+def test_train_from_scratch_is_an_accepted_mode(make_client, tmp_path):
+    client = make_client()
+    assert upload(client, tmp_path, mode="scratch").status_code == 202
+    assert wait_for(client, "done")["mode"] == "scratch"

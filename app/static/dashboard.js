@@ -258,9 +258,12 @@ async function predict(blob) {
   const data = await (await fetch("/api/predict", { method: "POST", body: form })).json();
   if (!data.ok) { $("predict-result").textContent = data.message; $("predict-result").className = "error"; $("predict-table").hidden = true; return; }
   $("predict-result").className = data.match ? "ok" : "muted";
+  const score = data.score == null ? "n/a" : data.score.toFixed(2);
   $("predict-result").textContent = data.match
-    ? `Prediction: ${data.prediction} (similarity ${data.score.toFixed(2)}, needs ${data.threshold.toFixed(2)})`
-    : `Prediction: unknown person. The closest registered face scored ${data.score == null ? "n/a" : data.score.toFixed(2)}, below the ${data.threshold.toFixed(2)} needed.`;
+    ? `Prediction: ${data.prediction} (similarity ${score}, needs ${data.threshold.toFixed(2)} to be named)`
+    : data.possible
+      ? `Possible match: ${data.possible} (similarity ${score}). It clears the login bar (${data.login_threshold.toFixed(2)}) but not the stricter bar for naming someone (${data.threshold.toFixed(2)}), so the answer is: unknown.`
+      : `Prediction: unknown person. The closest registered face scored ${score}, below the ${data.login_threshold.toFixed(2)} needed.`;
   $("predict-table").hidden = !data.candidates.length;
   $("predict-table").innerHTML = "<tr><th>Closest registered people</th><th>Similarity</th><th>Match</th></tr>" +
     data.candidates.map((c) => `<tr><td>${c.username}</td><td>${c.score.toFixed(3)}</td><td>${c.match ? "yes" : "no"}</td></tr>`).join("");

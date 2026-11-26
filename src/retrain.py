@@ -128,18 +128,20 @@ def run_retrain(
 ) -> dict:
     """Fine-tune the current model on uploaded people and compare old vs new on held-out people.
 
-    light: backbone frozen, only the embedding layer learns.
-    deep:  backbone unfrozen (BatchNorm stays frozen) and fine-tuned as well.
+    light:   backbone frozen, only the embedding layer learns.
+    deep:    backbone unfrozen (BatchNorm stays frozen) and fine-tuned as well.
+    scratch: ignore the current model and train a new one from ImageNet weights, on the upload plus
+             every original photo in the replay set (the same recipe as the notebook; very slow on a CPU).
 
     With a replay set, training mixes a few photos of every original person with the new
     people (so the model does not forget the old ones), and the result also reports old vs
     new on the original validation pairs ("replay_old" / "replay_new").
     """
-    if mode not in ("light", "deep"):
-        raise ValueError("mode must be 'light' or 'deep'")
+    if mode not in ("light", "deep", "scratch"):
+        raise ValueError("mode must be 'light', 'deep' or 'scratch'")
     from tensorflow import keras
 
-    epochs = epochs or (8 if mode == "deep" else 5)
+    epochs = epochs or {"light": 5, "deep": 8, "scratch": 8}[mode]
     rng = random.Random(seed)
     people = sorted(data)
     rng.shuffle(people)
@@ -163,7 +165,8 @@ def run_retrain(
     if replay_zip:
         replay = load_replay(replay_zip, replay_dir)
         replay_people = sorted(replay["train"])
-        kept = {n: replay["train"][n][:REPLAY_PER_PERSON] for n in replay_people}
+        per_person = None if mode == "scratch" else REPLAY_PER_PERSON
+        kept = {n: replay["train"][n][:per_person] for n in replay_people}
         x_replay = np.stack([load_training_face(p) for n in replay_people for p in kept[n]])
         y_replay = np.array([i for i, n in enumerate(replay_people) for _ in kept[n]])
         x_train = np.concatenate([x_replay, x_train])
@@ -183,24 +186,26 @@ def run_retrain(
     old = _metrics(old_model, x_eval, rows_a, rows_b, labels)
     replay_old = _metrics(old_model, *replay_eval) if replay_eval else None
 
-    deep = mode == "deep"
-    config = RunConfig(
-        name=mode,
-        augment=True,
-        early_stopping=True,
-        fine_tune=deep,
-        unfreeze_layers=10_000,
-        learning_rates=(1e-4, 1e-5),
-    )
-    total_epochs = epochs * (2 if deep else 1)
+    if mode == "scratch":
+        config = RunConfig(
+            name=mode, augment=True, dropout=0.3, l2=1e-4, early_stopping=True,
+            fine_tune=True, unfreeze_layers=100, learning_rates=(1e-3, 1e-4),
+        )
+        embedding = None  # train() builds a fresh ImageNet-based model
+    else:
+        config = RunConfig(
+            name=mode, augment=True, early_stopping=True, fine_tune=mode == "deep",
+            unfreeze_layers=10_000, learning_rates=(1e-4, 1e-5),
+        )
+        embedding = keras.models.load_model(base_model_path)
+    total_epochs = epochs * (2 if config.fine_tune else 1)
     finished = [0]
 
     def on_epoch_end(_epoch, _logs=None):
         finished[0] += 1
         progress(0.1 + 0.8 * min(finished[0] / total_epochs, 1.0))
 
-    embedding = keras.models.load_model(base_model_path)
-    train(
+    embedding, _ = train(
         config,
         (x_train, y_train),
         (x_eval, rows_a, rows_b, labels),
