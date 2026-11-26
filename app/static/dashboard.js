@@ -117,7 +117,15 @@ function renderJob(state) {
       const better = k === "far" || k === "frr" ? result.new[k] <= result.old[k] : result.new[k] >= result.old[k];
       return `<tr><td>${name}</td><td>${fmt(result.old[k])}</td><td class="${better ? "best-cell" : ""}">${fmt(result.new[k])}</td></tr>`;
     }).join("");
-    $("retrain-note").textContent = `Trained on ${result.people_train} uploaded people, compared on ${result.people_eval} held-out people (${result.eval_pairs} pairs). Small samples are noisy: promote only if the new model is clearly better.`;
+    $("replay-block").hidden = !result.replay_old;
+    if (result.replay_old) {
+      $("replay-table").innerHTML = "<tr><th>Metric</th><th>Old model</th><th>New model</th></tr>" + RESULT_ROWS.map(([k, name, asPct]) => {
+        const fmt = (v) => (asPct ? pct(v) : v.toFixed(3));
+        const better = k === "far" || k === "frr" ? result.replay_new[k] <= result.replay_old[k] : result.replay_new[k] >= result.replay_old[k];
+        return `<tr><td>${name}</td><td>${fmt(result.replay_old[k])}</td><td class="${better ? "best-cell" : ""}">${fmt(result.replay_new[k])}</td></tr>`;
+      }).join("");
+    }
+    $("retrain-note").textContent = `Trained on ${result.replay_people ? result.replay_people + " original and " : ""}${result.people_train} uploaded people, compared on ${result.people_eval} held-out people (${result.eval_pairs} pairs). Small samples are noisy: promote only if the new model is clearly better.`;
     $("promote").hidden = job.promoted;
     if (job.promoted) $("retrain-note").textContent += " This model is live.";
   }

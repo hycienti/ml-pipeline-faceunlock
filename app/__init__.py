@@ -1,3 +1,4 @@
+import functools
 import json
 import os
 import threading
@@ -46,6 +47,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         METRICS_PATH=str(ROOT / "models" / "metrics_v1.json"),
         DATASET_STATS_PATH=str(ROOT / "models" / "dataset_stats.json"),
         SAMPLE_FACES_PATH=str(ROOT / "models" / "sample_faces.jpg"),
+        REPLAY_ZIP=str(ROOT / "models" / "replay_faces.zip"),
+        REPLAY_DIR=str(Path(app.instance_path) / "replay"),
         RETRAIN_DIR=str(Path(app.instance_path) / "retrain"),
         ACTIVE_MODELS_DIR=str(Path(app.instance_path) / "models"),
         VERIFIER_FACTORY=verifier_from_files,
@@ -60,7 +63,13 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     Path(app.config["DB_PATH"]).parent.mkdir(parents=True, exist_ok=True)
     Path(app.config["PHOTO_DIR"]).mkdir(parents=True, exist_ok=True)
-    app.config.setdefault("RETRAIN_FN", run_retrain_job)
+    if "RETRAIN_FN" not in app.config:
+        replay = Path(app.config["REPLAY_ZIP"])
+        app.config["RETRAIN_FN"] = functools.partial(
+            run_retrain_job,
+            replay_zip=str(replay) if replay.exists() else None,
+            replay_dir=app.config["REPLAY_DIR"],
+        )
     app.config["RETRAIN_LOCK"] = threading.Lock()
     app.config["PROMOTE_LOCK"] = threading.Lock()
     Path(app.config["RETRAIN_DIR"]).mkdir(parents=True, exist_ok=True)

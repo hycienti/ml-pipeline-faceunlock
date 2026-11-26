@@ -176,3 +176,16 @@ def test_promote_is_all_or_nothing_when_a_user_cannot_be_re_embedded(make_client
     assert response.status_code == 422 and "alice" in response.get_json()["message"]
     assert client.get("/api/retrain/status").get_json()["active_version"] == 1
     assert client.get("/api/retrain/status").get_json()["job"]["promoted"] is False
+
+
+def test_default_retrain_uses_the_replay_set_when_it_ships_with_the_app(tmp_path):
+    app = create_app(
+        {
+            "TESTING": True,
+            "DB_PATH": str(tmp_path / "t.db"),
+            "PHOTO_DIR": str(tmp_path / "photos"),
+            "RETRAIN_DIR": str(tmp_path / "retrain"),
+            "VERIFIER": StubVerifier(),
+        }
+    )
+    assert app.config["RETRAIN_FN"].keywords["replay_zip"].endswith("replay_faces.zip")
