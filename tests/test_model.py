@@ -52,3 +52,15 @@ def test_unfreeze_top_layers_leaves_batchnorm_frozen():
 def test_training_model_outputs_one_score_per_identity(batch):
     model = build_training_model(build_embedding_model(), n_classes=830)
     assert model.predict(batch, verbose=0).shape == (4, 830)
+
+
+def test_l2_zero_turns_weight_decay_off():
+    assert len(build_embedding_model(l2=0.0).losses) == 0
+    assert len(build_embedding_model(l2=1e-4).losses) == 1
+
+
+def test_training_model_can_skip_augmentation():
+    with_aug = build_training_model(build_embedding_model(), 10, augment=True)
+    without = build_training_model(build_embedding_model(), 10, augment=False)
+    assert any(layer.name == "augmentation" for layer in with_aug.layers)
+    assert not any(layer.name == "augmentation" for layer in without.layers)

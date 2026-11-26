@@ -18,7 +18,10 @@ def build_augmentation() -> keras.Sequential:
 
 
 def build_embedding_model(
-    embedding_dim: int = 128, trainable_backbone: bool = False, dropout: float = 0.3
+    embedding_dim: int = 128,
+    trainable_backbone: bool = False,
+    dropout: float = 0.3,
+    l2: float = 1e-4,
 ) -> keras.Model:
     backbone = keras.applications.MobileNetV2(
         input_shape=(INPUT_SIZE, INPUT_SIZE, 3), include_top=False, weights="imagenet"
@@ -29,7 +32,9 @@ def build_embedding_model(
     x = backbone(inputs, training=False)
     x = layers.GlobalAveragePooling2D()(x)
     x = layers.Dropout(dropout)(x)
-    x = layers.Dense(embedding_dim, kernel_regularizer=regularizers.l2(1e-4))(x)
+    x = layers.Dense(
+        embedding_dim, kernel_regularizer=regularizers.l2(l2) if l2 else None
+    )(x)
     outputs = layers.UnitNormalization()(x)
     return keras.Model(inputs, outputs, name="embedding")
 
@@ -44,9 +49,11 @@ def unfreeze_top_layers(model: keras.Model, n: int = 30) -> None:
             layer.trainable = False
 
 
-def build_training_model(embedding_model: keras.Model, n_classes: int) -> keras.Model:
+def build_training_model(
+    embedding_model: keras.Model, n_classes: int, augment: bool = True
+) -> keras.Model:
     inputs = keras.Input(shape=embedding_model.input_shape[1:])
-    x = build_augmentation()(inputs)
+    x = build_augmentation()(inputs) if augment else inputs
     embedding = embedding_model(x)
     logits = layers.Dense(n_classes, name="classifier")(embedding)
     return keras.Model(inputs, logits, name="training_model")
