@@ -1,0 +1,13 @@
+.venv
+.git
+.claude
+data
+notebook
+tests
+docs
+scripts
+instance
+__pycache__
+*.pyc
+.DS_Store
+models/*.ipynb

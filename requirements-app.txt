@@ -1,0 +1,8 @@
+# Runtime dependencies of the web app (what the Docker image installs)
+flask
+gunicorn
+tensorflow
+opencv-python-headless<5
+numpy
+pillow
+scikit-learn

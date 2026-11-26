@@ -7,3 +7,4 @@ matplotlib
 pillow
 pytest
 locust
+gunicorn
