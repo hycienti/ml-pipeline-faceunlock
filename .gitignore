@@ -21,3 +21,4 @@ data/*.zip
 data/lfw/
 data/human-faces/
 data/cache/
+data/demo/
