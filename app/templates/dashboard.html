@@ -56,7 +56,23 @@
 
   <section class="panel">
     <h2>Retrain</h2>
-    <p class="muted">Upload more faces and retrain the model (light or deep). Coming in the next step.</p>
+    <p class="muted small">Upload a zip with one folder per person (<code>person_name/photo.jpg</code>): at least 10 people, 2+ photos each. About 30% of the people are held out to compare the old and new model fairly.</p>
+    <div class="row">
+      <select id="retrain-mode">
+        <option value="light">Light: only the top layer learns (minutes)</option>
+        <option value="deep">Deep: whole network fine-tunes (slow on CPU)</option>
+      </select>
+      <input id="retrain-file" type="file" accept=".zip">
+      <button id="retrain-start" type="button">Start retraining</button>
+    </div>
+    <p id="retrain-status" role="status" class="muted"></p>
+    <div class="bar" id="retrain-bar" hidden><div id="retrain-fill"></div></div>
+    <div id="retrain-result" hidden>
+      <h3>Old vs new model (on held-out uploaded people)</h3>
+      <table id="retrain-table"></table>
+      <p class="muted small" id="retrain-note"></p>
+      <button id="promote" type="button" hidden>Promote the new model</button>
+    </div>
   </section>
 </div>
 {% endblock %}

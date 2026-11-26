@@ -51,3 +51,10 @@ th { color: var(--muted); font-weight: 600; }
 tr.best td { color: var(--accent); font-weight: 600; }
 .samples { width: 100%; border-radius: 10px; border: 1px solid var(--line); }
 code { background: var(--bg); padding: 1px 6px; border-radius: 4px; }
+
+/* retrain */
+select, input[type=file] { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-size: .9rem; }
+.row { flex-wrap: wrap; align-items: center; }
+.bar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; margin: 8px 0; }
+#retrain-fill { height: 100%; width: 0; background: var(--accent); transition: width .4s; }
+.best-cell { color: var(--accent); font-weight: 700; }

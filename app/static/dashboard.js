@@ -95,6 +95,58 @@ async function loadData() {
   $("data-notes").textContent = `LFW photos capped at ${d.photo_cap} per person. Face detector found exactly one face in ${pct(d.detector_success_rate)} of training photos. Kaggle set: ${d.kaggle.total_images} images (colour modes in a ${d.kaggle.sampled}-image sample: ${modes}).`;
 }
 
+const RESULT_ROWS = [["auc", "AUC", false], ["accuracy", "Accuracy", true], ["f1", "F1", true], ["far", "False accept", true], ["frr", "False reject", true]];
+let pollTimer;
+
+function renderJob(state) {
+  const job = state.job;
+  if (!job) { $("retrain-status").textContent = `Live model: v${state.active_version}. No retrain yet.`; return; }
+  const running = job.status === "running";
+  $("retrain-start").disabled = running;
+  $("retrain-bar").hidden = !running;
+  $("retrain-fill").style.width = Math.round(job.progress * 100) + "%";
+  const label = { running: `Retraining (${job.mode}) ${Math.round(job.progress * 100)}%`, done: `Retrain (${job.mode}) finished.`, failed: "Retrain failed: " + (job.message || "unknown error") }[job.status];
+  $("retrain-status").textContent = `${label} Live model: v${state.active_version}.`;
+  $("retrain-status").className = job.status === "failed" ? "error" : "muted";
+
+  const result = job.result;
+  $("retrain-result").hidden = !(job.status === "done" && result);
+  if (job.status === "done" && result) {
+    $("retrain-table").innerHTML = "<tr><th>Metric</th><th>Old</th><th>New</th></tr>" + RESULT_ROWS.map(([k, name, asPct]) => {
+      const fmt = (v) => (asPct ? pct(v) : v.toFixed(3));
+      const better = k === "far" || k === "frr" ? result.new[k] <= result.old[k] : result.new[k] >= result.old[k];
+      return `<tr><td>${name}</td><td>${fmt(result.old[k])}</td><td class="${better ? "best-cell" : ""}">${fmt(result.new[k])}</td></tr>`;
+    }).join("");
+    $("retrain-note").textContent = `Trained on ${result.people_train} uploaded people, compared on ${result.people_eval} held-out people (${result.eval_pairs} pairs). Small samples are noisy: promote only if the new model is clearly better.`;
+    $("promote").hidden = job.promoted;
+    if (job.promoted) $("retrain-note").textContent += " This model is live.";
+  }
+  if (running) pollTimer = setTimeout(pollRetrain, 2000);
+}
+
+async function pollRetrain() { clearTimeout(pollTimer); renderJob(await getJSON("/api/retrain/status")); }
+
+$("retrain-start").onclick = async () => {
+  const file = $("retrain-file").files[0];
+  if (!file) { $("retrain-status").textContent = "Choose a zip file first."; return; }
+  const form = new FormData();
+  form.append("mode", $("retrain-mode").value);
+  form.append("dataset", file);
+  $("retrain-status").textContent = "Uploading and checking the zip…";
+  const data = await (await fetch("/api/retrain", { method: "POST", body: form })).json();
+  if (!data.ok) { $("retrain-status").textContent = data.message; $("retrain-status").className = "error"; return; }
+  pollRetrain();
+};
+
+$("promote").onclick = async () => {
+  if (!confirm("Make the new model live? Every user will be re-enrolled with it.")) return;
+  const data = await (await fetch("/api/retrain/promote", { method: "POST" })).json();
+  $("retrain-status").textContent = data.message;
+  $("retrain-status").className = data.ok ? "ok" : "error";
+  if (data.ok) setTimeout(() => location.reload(), 1200);
+};
+
 loadStatus();
 loadMetrics();
 loadData();
+pollRetrain();
