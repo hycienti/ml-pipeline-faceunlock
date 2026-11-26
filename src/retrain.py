@@ -9,6 +9,7 @@ from PIL import Image
 
 from src.evaluation import embed_faces, evaluate_pairs, pair_scores
 from src.preprocessing import build_pairs, load_training_face
+from src.replay import load_replay
 from src.training import RunConfig, train
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
@@ -18,6 +19,7 @@ MAX_FILES = 5000
 MAX_BYTES = 500 * 1024 * 1024
 EVAL_FRACTION = 0.3
 EVAL_PAIRS = 400
+REPLAY_PER_PERSON = 3  # original photos kept per person, to keep CPU retraining affordable
 
 
 def _ignored(name: str) -> bool:
@@ -91,18 +93,25 @@ def run_retrain(
     base_model_path: str,
     out_path: str,
     progress: Callable[[float], None],
-    epochs: int = 10,
+    epochs: int | None = None,
     seed: int = 0,
+    replay_zip: str | None = None,
+    replay_dir: str | None = None,
 ) -> dict:
     """Fine-tune the current model on uploaded people and compare old vs new on held-out people.
 
     light: backbone frozen, only the embedding layer learns.
     deep:  backbone unfrozen (BatchNorm stays frozen) and fine-tuned as well.
+
+    With a replay set, training mixes a few photos of every original person with the new
+    people (so the model does not forget the old ones), and the result also reports old vs
+    new on the original validation pairs ("replay_old" / "replay_new").
     """
     if mode not in ("light", "deep"):
         raise ValueError("mode must be 'light' or 'deep'")
     from tensorflow import keras
 
+    epochs = epochs or (8 if mode == "deep" else 5)
     rng = random.Random(seed)
     people = sorted(data)
     rng.shuffle(people)
@@ -120,9 +129,31 @@ def run_retrain(
     rows_a = np.array([row[a] for a, _, _ in pairs])
     rows_b = np.array([row[b] for _, b, _ in pairs])
     labels = np.array([label for _, _, label in pairs])
+
+    replay_people: list[str] = []
+    replay_eval = None
+    if replay_zip:
+        replay = load_replay(replay_zip, replay_dir)
+        replay_people = sorted(replay["train"])
+        kept = {n: replay["train"][n][:REPLAY_PER_PERSON] for n in replay_people}
+        x_replay = np.stack([load_training_face(p) for n in replay_people for p in kept[n]])
+        y_replay = np.array([i for i, n in enumerate(replay_people) for _ in kept[n]])
+        x_train = np.concatenate([x_replay, x_train])
+        y_train = np.concatenate([y_replay, y_train + len(replay_people)])
+
+        val_paths = sorted({p for a, b, _ in replay["val_pairs"] for p in (a, b)})
+        val_row = {p: i for i, p in enumerate(val_paths)}
+        replay_eval = (
+            np.stack([load_training_face(p) for p in val_paths]),
+            np.array([val_row[a] for a, _, _ in replay["val_pairs"]]),
+            np.array([val_row[b] for _, b, _ in replay["val_pairs"]]),
+            np.array([label for _, _, label in replay["val_pairs"]]),
+        )
     progress(0.08)
 
-    old = _metrics(keras.models.load_model(base_model_path), x_eval, rows_a, rows_b, labels)
+    old_model = keras.models.load_model(base_model_path)
+    old = _metrics(old_model, x_eval, rows_a, rows_b, labels)
+    replay_old = _metrics(old_model, *replay_eval) if replay_eval else None
 
     deep = mode == "deep"
     config = RunConfig(
@@ -145,7 +176,7 @@ def run_retrain(
         config,
         (x_train, y_train),
         (x_eval, rows_a, rows_b, labels),
-        n_classes=len(train_people),
+        n_classes=len(replay_people) + len(train_people),
         epochs=epochs,
         embedding=embedding,
         extra_callbacks=[keras.callbacks.LambdaCallback(on_epoch_end=on_epoch_end)],
@@ -154,11 +185,17 @@ def run_retrain(
     new = _metrics(embedding, x_eval, rows_a, rows_b, labels)
     embedding.save(out_path)
     progress(1.0)
-    return {
+    result = {
         "mode": mode,
         "people_train": len(train_people),
         "people_eval": len(eval_people),
         "eval_pairs": len(pairs),
+        "classes": len(replay_people) + len(train_people),
         "old": old,
         "new": new,
     }
+    if replay_eval:
+        result["replay_people"] = len(replay_people)
+        result["replay_old"] = replay_old
+        result["replay_new"] = _metrics(embedding, *replay_eval)
+    return result

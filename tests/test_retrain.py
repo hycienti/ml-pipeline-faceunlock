@@ -7,6 +7,7 @@ from PIL import Image
 
 from src.model import build_embedding_model
 from src.retrain import run_retrain, validate_upload
+from tests.test_replay import make_replay_zip
 
 
 def png_bytes(seed=0, size=64):
@@ -111,3 +112,28 @@ def test_run_retrain_returns_old_and_new_metrics_and_saves_model(tmp_path, mode)
 def test_run_retrain_rejects_unknown_mode(tmp_path):
     with pytest.raises(ValueError, match="mode"):
         run_retrain("medium", {}, "a", "b", lambda _: None)
+
+
+def test_run_retrain_with_replay_trains_on_old_and_new_people_and_checks_forgetting(tmp_path):
+    base = tmp_path / "base.keras"
+    build_embedding_model().save(base)
+    data = validate_upload(str(make_zip(tmp_path / "up.zip", ten_people(3))), str(tmp_path / "data"))
+    replay_zip = make_replay_zip(tmp_path / "replay.zip", train_people=12, val_people=4)
+
+    result = run_retrain(
+        "light", data, str(base), str(tmp_path / "new.keras"), lambda _: None, epochs=1,
+        replay_zip=str(replay_zip), replay_dir=str(tmp_path / "replay"),
+    )
+
+    assert result["replay_people"] == 12 and result["people_train"] == 7
+    assert result["classes"] == 19  # 12 original + 7 newly uploaded people
+    for key in ("replay_old", "replay_new"):
+        assert 0.0 <= result[key]["auc"] <= 1.0
+
+
+def test_run_retrain_without_replay_has_no_forgetting_check(tmp_path):
+    base = tmp_path / "base.keras"
+    build_embedding_model().save(base)
+    data = validate_upload(str(make_zip(tmp_path / "up.zip", ten_people(3))), str(tmp_path / "data"))
+    result = run_retrain("light", data, str(base), str(tmp_path / "new.keras"), lambda _: None, epochs=1)
+    assert "replay_old" not in result
