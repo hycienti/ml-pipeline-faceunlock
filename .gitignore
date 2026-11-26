@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+.claude/
+
+# datasets are too large for GitHub
+data/train/*
+data/test/*
+!data/*/.gitkeep
+
+# runtime data
+*.db
+instance/
+uploads/
+
+# planning notes, not part of the deliverable
+docs/superpowers/
