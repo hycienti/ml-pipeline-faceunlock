@@ -43,9 +43,13 @@ class FaceVerifier:
         mean = np.mean(embeddings, axis=0)
         return mean / np.linalg.norm(mean)
 
+    def compare(self, embedding: np.ndarray, stored: np.ndarray) -> tuple[bool, float]:
+        """Cosine similarity of a fresh embedding against a stored template."""
+        score = float(np.dot(embedding, stored))
+        return score >= self.threshold, score
+
     def verify(self, image: np.ndarray, stored: np.ndarray) -> tuple[bool, float]:
         embedding = self.embed(image)
         if embedding is None:
             return False, -1.0
-        score = float(np.dot(embedding, stored))
-        return score >= self.threshold, score
+        return self.compare(embedding, stored)

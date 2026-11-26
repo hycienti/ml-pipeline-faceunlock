@@ -133,3 +133,27 @@ def test_lockout_applies_to_unknown_usernames_too(client):
     for _ in range(5):
         assert login(client, "ghost").status_code == 401
     assert login(client, "ghost").status_code == 429
+
+
+def test_photo_without_a_face_gets_a_helpful_message_and_does_not_count_toward_lockout(client):
+    register(client, "alice")
+    for _ in range(7):
+        response = login(client, "alice", color=BLACK)  # the stub finds no face in black
+        assert response.status_code == 422
+        assert "one face" in response.get_json()["message"]
+    assert login(client, "alice", color=RED).status_code == 200  # not locked out
+
+
+def test_no_face_message_is_the_same_for_unknown_users(client):
+    register(client, "alice")
+    known = login(client, "alice", color=BLACK)
+    unknown = login(client, "nobody", color=BLACK)
+    assert known.status_code == unknown.status_code == 422
+    assert known.get_json() == unknown.get_json()
+
+
+def test_locked_users_stay_locked_even_with_a_no_face_photo(client):
+    register(client, "alice")
+    for _ in range(5):
+        login(client, "alice", color=GREEN)
+    assert login(client, "alice", color=BLACK).status_code == 429

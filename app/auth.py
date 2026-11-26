@@ -14,6 +14,7 @@ bp = Blueprint("auth", __name__)
 USERNAME_RE = re.compile(r"[A-Za-z0-9_.-]{3,30}")
 REQUIRED_PHOTOS = 3
 LOGIN_FAILED = "Login failed."
+NO_FACE = "We could not find exactly one face in that photo. Face the camera in good light, alone in the frame."
 
 
 def login_required(view):
@@ -117,13 +118,16 @@ def login():
         return _message(False, "Too many failed attempts. Try again in a few minutes.", 429)
 
     verifier = current_app.config["VERIFIER"]
+    embedding = verifier.embed(image)  # same work for known and unknown usernames
+    if embedding is None:
+        # Says nothing about who the user is, and a retake is not a failed attempt.
+        return _message(False, NO_FACE, 422)
+
     user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
     accepted, score = False, None
-    if user is None:
-        verifier.embed(image)  # same work as a real attempt, so timing does not reveal users
-    else:
+    if user is not None:
         stored = np.frombuffer(user["embedding"], dtype=np.float32)
-        accepted, score = verifier.verify(image, stored)
+        accepted, score = verifier.compare(embedding, stored)
 
     _log_event(db, username, accepted, score)
     if not accepted:

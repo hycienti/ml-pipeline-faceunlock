@@ -76,3 +76,11 @@ def test_embed_many_matches_embed_keeps_order_and_marks_failures(verifier):
     assert np.allclose(results[0], verifier.embed(bush))
     assert np.allclose(results[2], verifier.embed(powell))
     assert verifier.embed_many([]) == []
+
+
+def test_compare_scores_an_embedding_against_a_template(verifier):
+    template = verifier.enroll([load("George_W_Bush")])
+    accepted, score = verifier.compare(template, template)
+    assert accepted and score == pytest.approx(1.0, abs=1e-5)
+    accepted, score = verifier.compare(-template, template)
+    assert not accepted and score == pytest.approx(-1.0, abs=1e-5)
