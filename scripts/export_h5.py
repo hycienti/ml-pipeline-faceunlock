@@ -1,4 +1,4 @@
-"""Save models/faceunlock_v1.keras also as models/faceunlock_v1.h5 (the course asks for .pkl, .tf or .h5).
+"""Save models/faceunlock_v1.keras also as models/faceunlock_v1.h5 (a portable .h5 file next to the native .keras one).
 
 Run after every training run or manual model swap:
     python scripts/export_h5.py

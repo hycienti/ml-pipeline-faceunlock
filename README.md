@@ -23,11 +23,11 @@ people land far apart. The app compares fingerprints, never raw pixels.
 * **Dashboard**: uptime, model metrics, ROC curve, dataset charts and what they mean, a live evaluation of
   the running model, and per-user insights (photo quality, where your face sits among others, look-alikes).
 
-The task is classification on **image data** (not tabular), as the assignment asks.
+The task is classification on **image data**, not tabular data.
 
-## How it maps to the assignment
+## What is in the project
 
-| Assignment item | Where |
+| Capability | Where |
 |---|---|
 | Data acquisition | Notebook sections 1 to 4 (Kaggle via `kagglehub`) |
 | Data processing | `src/preprocessing.py`, notebook sections 5 to 8 |

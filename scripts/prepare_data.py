@@ -1,4 +1,4 @@
-"""Lay the data out as the course repo structure asks: data/train, data/val, data/test.
+"""Lay the data out in the standard repo layout: data/train, data/val, data/test.
 
 Copies the LFW photos of each person-level split (the exact split the notebook trains and
 evaluates on) into  data/<split>/<person>/<photo>.jpg.  Needs LFW extracted in data/lfw

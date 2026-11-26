@@ -26,7 +26,7 @@ def replay(tmp_path):
     return load_replay(str(make_replay_zip(tmp_path / "r.zip", 6, 6)), str(tmp_path / "out"))
 
 
-def test_live_evaluation_reports_the_course_metrics_at_the_live_threshold(replay):
+def test_live_evaluation_reports_accuracy_precision_recall_f1_and_auc_at_the_live_threshold(replay):
     result = evaluate_live(TwoClassVerifier(), replay)
     assert {"accuracy", "precision", "recall", "f1", "auc", "far", "frr"} <= set(result["metrics"])
     assert result["threshold"] == 0.5 and result["seconds"] >= 0
