@@ -17,3 +17,5 @@ uploads/
 
 # planning notes, not part of the deliverable
 docs/superpowers/
+data/*.zip
+data/lfw/
