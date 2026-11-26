@@ -22,6 +22,9 @@ class StubVerifier(FaceVerifier):
             return None
         return color / np.linalg.norm(color)
 
+    def embed_many(self, images):
+        return [self.embed(image) for image in images]
+
 
 def png(color):
     buffer = io.BytesIO()

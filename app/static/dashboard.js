@@ -95,6 +95,43 @@ async function loadData() {
   $("data-notes").textContent = `LFW photos capped at ${d.photo_cap} per person. Face detector found exactly one face in ${pct(d.detector_success_rate)} of training photos. Kaggle set: ${d.kaggle.total_images} images (colour modes in a ${d.kaggle.sampled}-image sample: ${modes}).`;
 }
 
+async function loadInsights() {
+  const d = await getJSON("/api/insights");
+  $("insights-loading").hidden = true;
+  $("insights-body").hidden = false;
+
+  const q = d.quality;
+  const best = (key) => (q.photos.length ? Math.round(100 * q.photos.reduce((a, p) => a + (p.scores[key] ?? 0), 0) / q.photos.length) + "%" : "n/a");
+  $("quality-tiles").innerHTML =
+    tile("Overall quality", q.overall == null ? "n/a" : Math.round(q.overall * 100) + "%", "average of your enrollment photos") +
+    tile("Lighting", best("brightness")) + tile("Sharpness", best("sharpness")) + tile("Face size", best("face_size"));
+  $("quality-photos").innerHTML = q.photos.map((p, i) =>
+    `<figure><img src="/api/insights/my-photo/${i}" alt="Enrollment photo ${i + 1}"><figcaption>${Math.round(p.overall * 100)}%${p.hints.length ? " · " + p.hints.join(" ") : " · looks good"}</figcaption></figure>`).join("");
+
+  if (!d.map.available) { $("map-unavailable").hidden = false; $("map-wrap").hidden = true; }
+  else {
+    const toPoints = (rows) => rows.map(([x, y]) => ({ x, y }));
+    new Chart($("map-chart"), { type: "scatter", data: { datasets: [
+      { label: "Dataset faces", data: toPoints(d.map.dataset), backgroundColor: "rgba(147,161,175,.45)", pointRadius: 3 },
+      { label: "Other users", data: toPoints(d.map.others), backgroundColor: COLORS.amber, pointRadius: 6 },
+      { label: "You", data: [{ x: d.map.user[0], y: d.map.user[1] }], backgroundColor: COLORS.accent, pointRadius: 9, pointStyle: "rectRot" },
+    ] }, options: { scales: { x: { ticks: { display: false } }, y: { ticks: { display: false } } }, plugins: { legend: { position: "bottom" } } } });
+    $("map-note").textContent = `Each dot is a face, flattened to 2D (the two directions that vary most keep ${Math.round(100 * (d.map.explained[0] + d.map.explained[1]))}% of the spread).`;
+  }
+
+  $("lookalikes").innerHTML = d.lookalikes.length ? d.lookalikes.map((l) =>
+    `<figure><img src="/api/insights/photo/${l.photo_id}" alt="${l.name}"><figcaption>${l.name}<br><span class="muted">similarity ${l.similarity.toFixed(2)}</span></figcaption></figure>`).join("") : '<p class="muted small">Needs the replay set.</p>';
+
+  const m = d.margin;
+  $("margin-note").textContent = m.margin == null
+    ? "Log in a few times to see how far above the threshold your own face lands."
+    : `${m.successes} of ${m.attempts} logins passed. Your passing logins average ${m.mean_success_score.toFixed(2)} against a threshold of ${m.threshold.toFixed(2)}: a margin of ${m.margin.toFixed(2)}.`;
+  new Chart($("margin-chart"), { type: "bar", data: {
+    labels: m.recent.map((_, i) => i + 1),
+    datasets: [{ data: m.recent.map((r) => r.score ?? 0), backgroundColor: m.recent.map((r) => (r.ok ? COLORS.accent : COLORS.bad)) }],
+  }, options: { plugins: { legend: { display: false }, tooltip: { enabled: true } }, scales: { y: { suggestedMin: 0 } } } });
+}
+
 const RESULT_ROWS = [["auc", "AUC", false], ["accuracy", "Accuracy", true], ["f1", "F1", true], ["far", "False accept", true], ["frr", "False reject", true]];
 let pollTimer;
 
@@ -158,3 +195,4 @@ loadStatus();
 loadMetrics();
 loadData();
 pollRetrain();
+loadInsights();

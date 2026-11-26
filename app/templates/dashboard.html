@@ -15,6 +15,31 @@
   </section>
 
   <section class="panel">
+    <h2>About your face</h2>
+    <p id="insights-loading" class="muted">Reading your enrollment photos…</p>
+    <div id="insights-body" hidden>
+      <h3>Photo quality</h3>
+      <div class="tiles" id="quality-tiles"></div>
+      <div class="photos" id="quality-photos"></div>
+      <div class="grid2">
+        <div>
+          <h3>Where you sit among dataset faces</h3>
+          <div id="map-unavailable" class="muted small" hidden>The face map needs the replay set (<code>models/replay_faces.zip</code>).</div>
+          <div class="chart" id="map-wrap"><canvas id="map-chart"></canvas></div>
+          <p class="muted small" id="map-note"></p>
+        </div>
+        <div>
+          <h3>Your closest look-alikes in the dataset</h3>
+          <div class="lookalikes" id="lookalikes"></div>
+          <h3>Your login margin</h3>
+          <p class="muted small" id="margin-note"></p>
+          <div class="chart short"><canvas id="margin-chart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
     <h2>Model performance</h2>
     <div id="metrics-empty" class="muted" hidden>
       No model report yet. Train in the notebook and put <code>metrics_v1.json</code> in <code>models/</code>.

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from flask import Flask
 
-from app import auth, dashboard, db, heartbeat, retrain_routes, views
+from app import auth, dashboard, db, heartbeat, insights, retrain_routes, views
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -51,6 +51,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         SAMPLE_FACES_PATH=str(ROOT / "models" / "sample_faces.jpg"),
         REPLAY_ZIP=str(ROOT / "models" / "replay_faces.zip"),
         REPLAY_DIR=str(Path(app.instance_path) / "replay"),
+        INSIGHT_DIR=str(Path(app.instance_path) / "insights"),
         RETRAIN_DIR=str(Path(app.instance_path) / "retrain"),
         ACTIVE_MODELS_DIR=str(Path(app.instance_path) / "models"),
         VERIFIER_FACTORY=verifier_from_files,
@@ -97,5 +98,8 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(auth.bp)
     app.register_blueprint(views.bp)
     app.register_blueprint(dashboard.bp)
+    app.register_blueprint(insights.bp)
     app.register_blueprint(retrain_routes.bp)
+    if not app.config["TESTING"] and Path(app.config["REPLAY_ZIP"]).exists():
+        threading.Thread(target=insights._dataset, args=(app,), daemon=True, name="insight-warmup").start()
     return app
