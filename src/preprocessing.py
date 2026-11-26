@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from PIL import Image
 
 _DETECTOR = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
@@ -20,3 +21,10 @@ def detect_and_crop(image: np.ndarray, margin: float = 0.2) -> np.ndarray | None
     x1 = min(x + w + pad_x, image.shape[1])
     y1 = min(y + h + pad_y, image.shape[0])
     return image[y0:y1, x0:x1]
+
+
+def preprocess(face: np.ndarray, size: int = 160) -> np.ndarray:
+    image = Image.fromarray(face).convert("RGB").resize(
+        (size, size), Image.Resampling.LANCZOS
+    )
+    return np.asarray(image, dtype=np.float32) / 127.5 - 1.0
