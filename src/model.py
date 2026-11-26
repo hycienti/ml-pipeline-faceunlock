@@ -39,6 +39,10 @@ def build_embedding_model(
     return keras.Model(inputs, outputs, name="embedding")
 
 
+def freeze_backbone(model: keras.Model) -> None:
+    next(layer for layer in model.layers if isinstance(layer, keras.Model)).trainable = False
+
+
 def unfreeze_top_layers(model: keras.Model, n: int = 30) -> None:
     backbone = next(layer for layer in model.layers if isinstance(layer, keras.Model))
     backbone.trainable = True

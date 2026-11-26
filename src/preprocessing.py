@@ -67,3 +67,12 @@ def build_pairs(
             pairs.append((rng.choice(index[p1]), rng.choice(index[p2]), 0))
     rng.shuffle(pairs)
     return pairs
+
+
+def load_training_face(path: str) -> np.ndarray:
+    """Training-time recipe: detect one face, else fall back to a centre crop; 160x160 uint8."""
+    image = np.asarray(Image.open(path).convert("RGB"))
+    face = detect_and_crop(image)
+    if face is None:
+        face = center_crop(image)
+    return resize_face(face)

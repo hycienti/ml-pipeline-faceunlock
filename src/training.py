@@ -4,7 +4,12 @@ import tensorflow as tf
 from tensorflow import keras
 
 from src.evaluation import evaluate_pairs, pair_scores
-from src.model import build_embedding_model, build_training_model, unfreeze_top_layers
+from src.model import (
+    build_embedding_model,
+    build_training_model,
+    freeze_backbone,
+    unfreeze_top_layers,
+)
 from src.preprocessing import scale_pixels
 
 
@@ -17,6 +22,8 @@ class RunConfig:
     label_smoothing: float = 0.0
     early_stopping: bool = False
     fine_tune: bool = False
+    unfreeze_layers: int = 30
+    learning_rates: tuple = (1e-3, 1e-5)
 
 
 def make_dataset(faces, labels, n_classes, batch_size=32, shuffle=False):
@@ -43,20 +50,27 @@ class PairAUC(keras.callbacks.Callback):
         logs["val_auc"] = evaluate_pairs(scores, self.labels)["auc"]
 
 
-def train(config, train_data, val_data, n_classes, epochs=30, batch_size=32, seed=0):
+def train(
+    config, train_data, val_data, n_classes, epochs=30, batch_size=32, seed=0,
+    embedding=None, extra_callbacks=(),
+):
     keras.utils.set_random_seed(seed)
     x_train, y_train = train_data
     train_ds = make_dataset(x_train, y_train, n_classes, batch_size, shuffle=True)
 
-    embedding = build_embedding_model(dropout=config.dropout, l2=config.l2)
+    if embedding is None:
+        embedding = build_embedding_model(dropout=config.dropout, l2=config.l2)
+    else:
+        freeze_backbone(embedding)
     model = build_training_model(embedding, n_classes, augment=config.augment)
     pair_auc = PairAUC(embedding, *val_data)
 
-    phases = [(1e-3, False)] + ([(1e-5, True)] if config.fine_tune else [])
+    first_lr, second_lr = config.learning_rates
+    phases = [(first_lr, False)] + ([(second_lr, True)] if config.fine_tune else [])
     history = {"loss": [], "val_auc": []}
     for learning_rate, fine_tune in phases:
         if fine_tune:
-            unfreeze_top_layers(embedding)
+            unfreeze_top_layers(embedding, config.unfreeze_layers)
         model.compile(
             optimizer=keras.optimizers.Adam(learning_rate, clipnorm=1.0),
             loss=keras.losses.CategoricalCrossentropy(
@@ -69,6 +83,7 @@ def train(config, train_data, val_data, n_classes, epochs=30, batch_size=32, see
                 monitor="val_auc", mode="max", factor=0.5, patience=2
             ),
         ]
+        callbacks += list(extra_callbacks)
         if config.early_stopping:
             callbacks.append(
                 keras.callbacks.EarlyStopping(
