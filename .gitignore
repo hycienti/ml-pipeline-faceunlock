@@ -24,3 +24,4 @@ data/cache/
 data/demo/
 data/val/*
 !data/val/.gitkeep
+data/demo_retrain/
