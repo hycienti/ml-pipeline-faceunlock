@@ -26,10 +26,10 @@ image = (
     modal.Image.debian_slim(python_version="3.12")
     .apt_install("libglib2.0-0", "libgl1")
     .pip_install_from_requirements("requirements-app.txt")
-    .env({"FACEUNLOCK_INSTANCE": INSTANCE, "TF_CPP_MIN_LOG_LEVEL": "2", "PYTHONUNBUFFERED": "1"})
+    .env({"FACEUNLOCK_INSTANCE": INSTANCE, "FACEUNLOCK_PLATFORM": "Modal", "TF_CPP_MIN_LOG_LEVEL": "2", "PYTHONUNBUFFERED": "1"})
     .add_local_dir("app", "/root/app", ignore=["**/__pycache__"])
     .add_local_dir("src", "/root/src", ignore=["**/__pycache__"])
-    .add_local_dir("models", "/root/models")
+    .add_local_dir("models", "/root/models", ignore=["*.h5", "*.ipynb"])
 )
 
 app = modal.App("faceunlock")

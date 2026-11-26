@@ -70,7 +70,7 @@ def _read_json(path: str):
 def uptime():
     summary = uptime_summary(get_db())
     summary["deployment"] = {
-        "platform": "Railway" if os.environ.get("RAILWAY_PROJECT_ID") else "Local",
+        "platform": os.environ.get("FACEUNLOCK_PLATFORM") or ("Railway" if os.environ.get("RAILWAY_PROJECT_ID") else "Local"),
         "python": platform.python_version(),
         "model_version": current_app.config["MODEL_VERSION"],
         "threshold": getattr(current_app.config["VERIFIER"], "threshold", None),

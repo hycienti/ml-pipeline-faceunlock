@@ -141,3 +141,10 @@ def test_dataset_stats_endpoint_adds_written_interpretations(make_client, tmp_pa
     features = [s["feature"] for s in data["stories"]]
     assert "Photos per person" in features and "Faces per photo" in features
     assert "A B" in " ".join(s["story"] for s in data["stories"])
+
+
+def test_deployment_platform_comes_from_the_environment(make_client, monkeypatch):
+    monkeypatch.setenv("FACEUNLOCK_PLATFORM", "Modal")
+    assert make_client().get("/api/uptime").get_json()["deployment"]["platform"] == "Modal"
+    monkeypatch.delenv("FACEUNLOCK_PLATFORM")
+    assert make_client().get("/api/uptime").get_json()["deployment"]["platform"] == "Local"

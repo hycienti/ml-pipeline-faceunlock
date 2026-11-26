@@ -12,7 +12,7 @@ COPY app ./app
 COPY src ./src
 COPY models ./models
 
-ENV PYTHONUNBUFFERED=1 TF_CPP_MIN_LOG_LEVEL=2
+ENV PYTHONUNBUFFERED=1 TF_CPP_MIN_LOG_LEVEL=2 FACEUNLOCK_PLATFORM=Docker
 EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=90s --retries=5 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/login')"
