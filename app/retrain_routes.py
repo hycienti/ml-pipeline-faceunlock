@@ -6,12 +6,11 @@ import time
 from contextlib import closing
 from pathlib import Path
 
-import numpy as np
 from flask import Blueprint, current_app, jsonify, request
-from PIL import Image
 
 from app.auth import login_required
 from app.db import get_db
+from app.reenroll import reenroll_users
 from src.retrain import validate_upload
 
 bp = Blueprint("retrain", __name__)
@@ -134,22 +133,14 @@ def promote():
         threshold = result.get("login_threshold", {}).get("threshold", result["new"]["threshold"])
         new_verifier = app.config["VERIFIER_FACTORY"](job["model_path"], threshold)
 
-        updated = []
-        for user in db.execute("SELECT id, username FROM users").fetchall():
-            folder = Path(app.config["PHOTO_DIR"]) / user["username"].lower()
-            photos = sorted(folder.glob("*.jpg"))
-            try:
-                if not photos:
-                    raise ValueError("no enrollment photos found")
-                images = [np.asarray(Image.open(p).convert("RGB")) for p in photos]
-                embedding = new_verifier.enroll(images)
-            except ValueError as error:
-                return _message(
-                    False,
-                    f"Could not re-enroll {user['username']} with the new model: {error}",
-                    422,
-                )
-            updated.append((embedding.astype(np.float32).tobytes(), user["id"]))
+        try:
+            updated = reenroll_users(
+                db.execute("SELECT id, username FROM users").fetchall(),
+                app.config["PHOTO_DIR"],
+                new_verifier,
+            )
+        except ValueError as error:
+            return _message(False, str(error), 422)
 
         version = active_version(db) + 1
         target = Path(app.config["ACTIVE_MODELS_DIR"]) / f"model_v{version}.keras"
