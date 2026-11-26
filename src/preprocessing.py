@@ -25,11 +25,26 @@ def detect_and_crop(image: np.ndarray, margin: float = 0.2) -> np.ndarray | None
     return image[y0:y1, x0:x1]
 
 
-def preprocess(face: np.ndarray, size: int = 160) -> np.ndarray:
+def resize_face(face: np.ndarray, size: int = 160) -> np.ndarray:
     image = Image.fromarray(face).convert("RGB").resize(
         (size, size), Image.Resampling.LANCZOS
     )
-    return np.asarray(image, dtype=np.float32) / 127.5 - 1.0
+    return np.asarray(image, dtype=np.uint8)
+
+
+def scale_pixels(x: np.ndarray) -> np.ndarray:
+    return x.astype(np.float32) / 127.5 - 1.0
+
+
+def preprocess(face: np.ndarray, size: int = 160) -> np.ndarray:
+    return scale_pixels(resize_face(face, size))
+
+
+def center_crop(image: np.ndarray, fraction: float = 0.65) -> np.ndarray:
+    h, w = image.shape[:2]
+    ch, cw = int(h * fraction), int(w * fraction)
+    top, left = (h - ch) // 2, (w - cw) // 2
+    return image[top : top + ch, left : left + cw]
 
 
 def build_pairs(

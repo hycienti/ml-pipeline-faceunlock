@@ -4,7 +4,14 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from src.preprocessing import build_pairs, detect_and_crop, preprocess
+from src.preprocessing import (
+    build_pairs,
+    center_crop,
+    detect_and_crop,
+    preprocess,
+    resize_face,
+    scale_pixels,
+)
 
 LFW_DIR = Path(__file__).parent.parent / "data/lfw/lfw-deepfunneled/lfw-deepfunneled"
 
@@ -99,3 +106,19 @@ def test_impossible_requests_raise():
         build_pairs({"A": ["a1"], "B": ["b1"]}, 4, seed=0)  # nobody has 2 photos
     with pytest.raises(ValueError):
         build_pairs({"A": ["a1", "a2"]}, 4, seed=0)  # only one person
+
+
+def test_resize_face_returns_uint8_square():
+    out = resize_face(np.zeros((120, 80, 3), dtype=np.uint8))
+    assert out.shape == (160, 160, 3) and out.dtype == np.uint8
+
+
+def test_scale_pixels_maps_ends_to_minus_one_and_one():
+    assert np.allclose(scale_pixels(np.array([0, 255], dtype=np.uint8)), [-1.0, 1.0])
+
+
+def test_center_crop_takes_the_middle():
+    image = np.arange(100).reshape(10, 10)
+    crop = center_crop(image, 0.5)
+    assert crop.shape == (5, 5)
+    assert np.array_equal(crop, image[2:7, 2:7])
