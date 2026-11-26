@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from src.evaluation import evaluate_pairs, pair_scores
+from src.evaluation import embed_faces, evaluate_pairs, pair_scores
+from src.preprocessing import scale_pixels
 
 
 def test_pair_scores_are_cosine_similarity_of_unit_vectors():
@@ -30,3 +31,15 @@ def test_overlapping_pairs_at_fixed_threshold():
     assert result["far"] == pytest.approx(0.5)
     assert result["frr"] == pytest.approx(0.5)
     assert result["auc"] == pytest.approx(0.75)
+
+
+class FakeModel:
+    def predict(self, x, verbose=0):
+        return x.reshape(len(x), -1)[:, :2]
+
+
+def test_embed_faces_batches_and_keeps_order():
+    faces = np.arange(5 * 2 * 2 * 3, dtype=np.uint8).reshape(5, 2, 2, 3)
+    out = embed_faces(FakeModel(), faces, batch_size=2)
+    assert out.shape == (5, 2)
+    assert np.allclose(out, scale_pixels(faces).reshape(5, -1)[:, :2])

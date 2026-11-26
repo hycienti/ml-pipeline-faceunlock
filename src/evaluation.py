@@ -1,6 +1,8 @@
 import numpy as np
 from sklearn.metrics import roc_auc_score, roc_curve
 
+from src.preprocessing import scale_pixels
+
 
 def pair_scores(
     embeddings: np.ndarray, rows_a: np.ndarray, rows_b: np.ndarray
@@ -37,3 +39,11 @@ def evaluate_pairs(
         "fpr": fpr.tolist(),
         "tpr": tpr.tolist(),
     }
+
+
+def embed_faces(model, faces: np.ndarray, batch_size: int = 256) -> np.ndarray:
+    batches = [
+        model.predict(scale_pixels(faces[i : i + batch_size]), verbose=0)
+        for i in range(0, len(faces), batch_size)
+    ]
+    return np.concatenate(batches)
