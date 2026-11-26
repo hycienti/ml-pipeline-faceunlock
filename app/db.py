@@ -20,6 +20,26 @@ CREATE TABLE IF NOT EXISTS login_events (
 CREATE TABLE IF NOT EXISTS heartbeats (ts REAL NOT NULL);
 CREATE INDEX IF NOT EXISTS heartbeats_ts ON heartbeats (ts);
 CREATE TABLE IF NOT EXISTS app_starts (ts REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS retrain_jobs (
+    id INTEGER PRIMARY KEY,
+    mode TEXT NOT NULL,
+    status TEXT NOT NULL,
+    progress REAL NOT NULL DEFAULT 0,
+    message TEXT,
+    result TEXT,
+    model_path TEXT,
+    promoted INTEGER NOT NULL DEFAULT 0,
+    created_at REAL NOT NULL,
+    finished_at REAL,
+    started_by TEXT
+);
+CREATE TABLE IF NOT EXISTS model_versions (
+    version INTEGER PRIMARY KEY,
+    path TEXT NOT NULL,
+    threshold REAL NOT NULL,
+    created_at REAL NOT NULL,
+    job_id INTEGER
+);
 """
 
 
