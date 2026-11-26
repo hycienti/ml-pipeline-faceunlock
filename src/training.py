@@ -22,8 +22,8 @@ class RunConfig:
     label_smoothing: float = 0.0
     early_stopping: bool = False
     fine_tune: bool = False
-    unfreeze_layers: int = 30
-    learning_rates: tuple = (1e-3, 1e-5)
+    unfreeze_layers: int = 100
+    learning_rates: tuple = (1e-3, 1e-4)
 
 
 def make_dataset(faces, labels, n_classes, batch_size=32, shuffle=False):
@@ -31,9 +31,12 @@ def make_dataset(faces, labels, n_classes, batch_size=32, shuffle=False):
     if shuffle:
         ds = ds.shuffle(len(faces), seed=0)
     ds = ds.batch(batch_size)
-    ds = ds.map(
-        lambda x, y: (tf.cast(x, tf.float32) / 127.5 - 1.0, tf.one_hot(y, n_classes))
-    )
+
+    def prepare(x, y):
+        onehot = tf.one_hot(y, n_classes)
+        return (tf.cast(x, tf.float32) / 127.5 - 1.0, onehot), onehot
+
+    ds = ds.map(prepare)
     return ds.prefetch(tf.data.AUTOTUNE)
 
 

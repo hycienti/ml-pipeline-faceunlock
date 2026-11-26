@@ -3,6 +3,7 @@ import pytest
 from tensorflow import keras
 
 from src.model import (
+    CosineMarginHead,
     build_augmentation,
     build_embedding_model,
     build_training_model,
@@ -51,7 +52,8 @@ def test_unfreeze_top_layers_leaves_batchnorm_frozen():
 
 def test_training_model_outputs_one_score_per_identity(batch):
     model = build_training_model(build_embedding_model(), n_classes=830)
-    assert model.predict(batch, verbose=0).shape == (4, 830)
+    onehot = np.zeros((4, 830), dtype="float32")
+    assert model.predict([batch, onehot], verbose=0).shape == (4, 830)
 
 
 def test_l2_zero_turns_weight_decay_off():
@@ -64,3 +66,14 @@ def test_training_model_can_skip_augmentation():
     without = build_training_model(build_embedding_model(), 10, augment=False)
     assert any(layer.name == "augmentation" for layer in with_aug.layers)
     assert not any(layer.name == "augmentation" for layer in without.layers)
+
+
+def test_cosine_head_subtracts_scaled_margin_from_the_true_class_only():
+    rng = np.random.default_rng(0)
+    embeddings = rng.normal(size=(5, 16)).astype("float32")
+    onehot = np.eye(4, dtype="float32")[[0, 1, 2, 3, 0]]
+    head = CosineMarginHead(4, scale=10.0, margin=0.3)
+    with_margin = np.asarray(head([embeddings, onehot]))
+    without = np.asarray(head([embeddings, np.zeros_like(onehot)]))
+    assert np.allclose(without - with_margin, 10.0 * 0.3 * onehot, atol=1e-4)
+    assert np.abs(without).max() <= 10.0 + 1e-4  # cosine similarity is bounded by 1

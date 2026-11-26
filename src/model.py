@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers, regularizers
 
@@ -53,11 +54,42 @@ def unfreeze_top_layers(model: keras.Model, n: int = 30) -> None:
             layer.trainable = False
 
 
+class CosineMarginHead(layers.Layer):
+    """CosFace-style classifier: scale * (cosine - margin on the true class).
+
+    The margin forces same-person embeddings to be clearly closer than the nearest
+    other person, which is exactly what verification needs. Only used while training.
+    """
+
+    def __init__(self, n_classes: int, scale: float = 30.0, margin: float = 0.25, **kwargs):
+        super().__init__(**kwargs)
+        self.n_classes, self.scale, self.margin = n_classes, scale, margin
+
+    def build(self, input_shape):
+        self.weights_matrix = self.add_weight(
+            shape=(input_shape[0][-1], self.n_classes), initializer="glorot_uniform", name="w"
+        )
+
+    def call(self, inputs):
+        embeddings, onehot = inputs
+        cosine = tf.matmul(
+            tf.math.l2_normalize(embeddings, axis=1),
+            tf.math.l2_normalize(self.weights_matrix, axis=0),
+        )
+        return self.scale * (cosine - self.margin * onehot)
+
+
 def build_training_model(
-    embedding_model: keras.Model, n_classes: int, augment: bool = True
+    embedding_model: keras.Model,
+    n_classes: int,
+    augment: bool = True,
+    scale: float = 30.0,
+    margin: float = 0.25,
 ) -> keras.Model:
-    inputs = keras.Input(shape=embedding_model.input_shape[1:])
-    x = build_augmentation()(inputs) if augment else inputs
-    embedding = embedding_model(x)
-    logits = layers.Dense(n_classes, name="classifier")(embedding)
-    return keras.Model(inputs, logits, name="training_model")
+    images = keras.Input(shape=embedding_model.input_shape[1:])
+    labels = keras.Input(shape=(n_classes,), name="label")
+    x = build_augmentation()(images) if augment else images
+    logits = CosineMarginHead(n_classes, scale, margin, name="head")(
+        [embedding_model(x), labels]
+    )
+    return keras.Model([images, labels], logits, name="training_model")

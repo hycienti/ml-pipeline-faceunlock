@@ -128,7 +128,6 @@ def run_retrain(
     config = RunConfig(
         name=mode,
         augment=True,
-        label_smoothing=0.1,
         early_stopping=True,
         fine_tune=deep,
         unfreeze_layers=10_000,

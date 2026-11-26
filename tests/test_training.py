@@ -22,9 +22,10 @@ def tiny():
 
 def test_dataset_scales_pixels_and_one_hot_encodes_labels(tiny):
     (faces, labels), _ = tiny
-    x, y = next(iter(make_dataset(faces, labels, n_classes=6, batch_size=4)))
+    (x, y_in), y = next(iter(make_dataset(faces, labels, n_classes=6, batch_size=4)))
     assert np.allclose(x.numpy(), scale_pixels(faces[:4]))
     assert y.shape == (4, 6) and y.numpy().sum() == 4
+    assert np.array_equal(y_in.numpy(), y.numpy())  # labels are also model inputs (margin head)
 
 
 def test_train_returns_unit_norm_embedding_and_history(tiny):
