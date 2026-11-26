@@ -1,10 +1,11 @@
 import json
 import os
+import time
 from pathlib import Path
 
 from flask import Flask
 
-from app import auth, db, views
+from app import auth, dashboard, db, heartbeat, views
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -24,6 +25,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         PHOTO_DIR=str(Path(app.instance_path) / "photos"),
         MODEL_PATH=str(ROOT / "models" / "faceunlock_v1.keras"),
         METRICS_PATH=str(ROOT / "models" / "metrics_v1.json"),
+        DATASET_STATS_PATH=str(ROOT / "models" / "dataset_stats.json"),
+        HEARTBEAT_SECONDS=60,
         MODEL_VERSION=1,
         MAX_FAILED_LOGINS=5,
         LOCKOUT_SECONDS=300,
@@ -40,7 +43,12 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.teardown_appcontext(db.close_db)
     with app.app_context():
         db.init_db()
+        db.get_db().execute("INSERT INTO app_starts (ts) VALUES (?)", (time.time(),))
+        db.get_db().commit()
+    if not app.config["TESTING"]:
+        heartbeat.start(app)
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(views.bp)
+    app.register_blueprint(dashboard.bp)
     return app

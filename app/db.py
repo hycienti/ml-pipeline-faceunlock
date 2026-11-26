@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS login_events (
     score REAL,
     ts REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS heartbeats (ts REAL NOT NULL);
+CREATE INDEX IF NOT EXISTS heartbeats_ts ON heartbeats (ts);
+CREATE TABLE IF NOT EXISTS app_starts (ts REAL NOT NULL);
 """
 
 
