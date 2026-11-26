@@ -43,3 +43,13 @@ def test_fine_tune_adds_a_second_phase(tiny):
     config = RunConfig(name="t", fine_tune=True, early_stopping=True)
     _, history = train(config, train_data, val, n_classes=6, epochs=1, batch_size=8)
     assert len(history["loss"]) == 2
+
+
+def test_long_fine_tune_options_run_with_cosine_decay_and_own_epoch_count(tiny):
+    train_data, val = tiny
+    config = RunConfig(
+        name="t", fine_tune=True, cosine_decay=True, patience=2,
+        fine_tune_epochs=2, unfreeze_layers=10_000, early_stopping=True,
+    )
+    _, history = train(config, train_data, val, n_classes=6, epochs=1, batch_size=8)
+    assert len(history["loss"]) == 1 + 2  # 1 epoch frozen, then 2 fine-tune epochs

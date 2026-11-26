@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 
 import tensorflow as tf
@@ -24,6 +25,9 @@ class RunConfig:
     fine_tune: bool = False
     unfreeze_layers: int = 100
     learning_rates: tuple = (1e-3, 1e-4)
+    patience: int = 5
+    fine_tune_epochs: int | None = None
+    cosine_decay: bool = False
 
 
 def make_dataset(faces, labels, n_classes, batch_size=32, shuffle=False):
@@ -69,31 +73,39 @@ def train(
     pair_auc = PairAUC(embedding, *val_data)
 
     first_lr, second_lr = config.learning_rates
-    phases = [(first_lr, False)] + ([(second_lr, True)] if config.fine_tune else [])
+    phases = [(first_lr, False, epochs)]
+    if config.fine_tune:
+        phases.append((second_lr, True, config.fine_tune_epochs or epochs))
     history = {"loss": [], "val_auc": []}
-    for learning_rate, fine_tune in phases:
+    for learning_rate, fine_tune, phase_epochs in phases:
+        decay = fine_tune and config.cosine_decay
         if fine_tune:
             unfreeze_top_layers(embedding, config.unfreeze_layers)
+        if decay:
+            steps = phase_epochs * math.ceil(len(x_train) / batch_size)
+            learning_rate = keras.optimizers.schedules.CosineDecay(learning_rate, steps)
         model.compile(
             optimizer=keras.optimizers.Adam(learning_rate, clipnorm=1.0),
             loss=keras.losses.CategoricalCrossentropy(
                 from_logits=True, label_smoothing=config.label_smoothing
             ),
         )
-        callbacks = [
-            pair_auc,
-            keras.callbacks.ReduceLROnPlateau(
-                monitor="val_auc", mode="max", factor=0.5, patience=2
-            ),
-        ]
+        callbacks = [pair_auc]
+        if not decay:  # a decay schedule and ReduceLROnPlateau cannot both set the rate
+            callbacks.append(
+                keras.callbacks.ReduceLROnPlateau(
+                    monitor="val_auc", mode="max", factor=0.5, patience=2
+                )
+            )
         callbacks += list(extra_callbacks)
         if config.early_stopping:
             callbacks.append(
                 keras.callbacks.EarlyStopping(
-                    monitor="val_auc", mode="max", patience=5, restore_best_weights=True
+                    monitor="val_auc", mode="max", patience=config.patience,
+                    restore_best_weights=True
                 )
             )
-        fit = model.fit(train_ds, epochs=epochs, callbacks=callbacks, verbose=0)
+        fit = model.fit(train_ds, epochs=phase_epochs, callbacks=callbacks, verbose=0)
         history["loss"] += fit.history["loss"]
         history["val_auc"] += fit.history["val_auc"]
     return embedding, history
