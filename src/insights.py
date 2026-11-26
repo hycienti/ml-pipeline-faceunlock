@@ -88,3 +88,65 @@ def login_margin(rows: list[tuple[int, float | None]], threshold: float) -> dict
         "margin": None if mean_success is None else round(mean_success - threshold, 3),
         "recent": [{"ok": bool(ok), "score": score} for ok, score in rows[-20:]],
     }
+
+
+def dataset_stories(stats: dict) -> list[dict]:
+    """Plain-language interpretations of the dataset features, written from the real numbers."""
+    stories = []
+    lfw = stats.get("lfw")
+    if lfw:
+        single_pct = 100 * lfw["single_photo_people"] / lfw["people"]
+        usable_pct = 100 * lfw["usable_people"] / lfw["people"]
+        stories.append({
+            "feature": "Photos per person",
+            "story": (
+                f"{lfw['single_photo_people']:,} of {lfw['people']:,} people ({single_pct:.1f}%) have a single photo, "
+                f"while {lfw['top_person'].replace('_', ' ')} alone has {lfw['top_count']}. Verification needs at least "
+                f"two photos of a person, so only {lfw['usable_people']:,} people ({usable_pct:.0f}%) are usable. "
+                f"We cap every person at {stats.get('photo_cap', 20)} photos so a few celebrities do not dominate "
+                "what the model learns."
+            ),
+        })
+    kaggle = stats.get("kaggle", {})
+    width = kaggle.get("width_px")
+    if width:
+        stories.append({
+            "feature": "Image size",
+            "story": (
+                f"The Kaggle faces run from {width['min']:,}px to {width['max']:,}px wide (median {width['median']:,}px). "
+                "A CNN needs one fixed input size, so every face is detected, cropped and resized to 160x160. "
+                "Without that, the biggest photos would carry far more detail than the smallest."
+            ),
+        })
+    light = kaggle.get("brightness_stats")
+    if light:
+        stories.append({
+            "feature": "Lighting",
+            "story": (
+                f"Average brightness is {light['mean']:.0f} out of 255 but ranges from {light['min']:.0f} (very dark) to "
+                f"{light['max']:.0f} (washed out), with a spread of {light['std']:.0f}. A model trained on evenly lit "
+                "photos would fail on a dim webcam, which is why training applies brightness and contrast augmentation."
+            ),
+        })
+    if "detector_success_rate" in stats:
+        rate = 100 * stats["detector_success_rate"]
+        stories.append({
+            "feature": "Faces per photo",
+            "story": (
+                f"The face detector finds exactly one face in {rate:.1f}% of training photos; the rest are group shots "
+                "or unusual angles. The app refuses such photos at registration and login ('no single face'), and "
+                "training falls back to a centre crop for them."
+            ),
+        })
+    modes = kaggle.get("colour_modes")
+    if modes and kaggle.get("sampled"):
+        odd = kaggle["sampled"] - modes.get("RGB", 0)
+        stories.append({
+            "feature": "Colour format",
+            "story": (
+                f"{odd} of {kaggle['sampled']} sampled Kaggle images are not plain RGB (grayscale, PNGs with "
+                "transparency, palette images). Every image is converted to 3-channel RGB first so the network always "
+                "sees the same kind of input."
+            ),
+        })
+    return stories

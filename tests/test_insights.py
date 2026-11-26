@@ -5,7 +5,13 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from src.insights import embedding_map, login_margin, nearest_lookalikes, quality_score
+from src.insights import (
+    dataset_stories,
+    embedding_map,
+    login_margin,
+    nearest_lookalikes,
+    quality_score,
+)
 
 LFW_DIR = Path(__file__).parent.parent / "data/lfw/lfw-deepfunneled/lfw-deepfunneled"
 
@@ -84,3 +90,37 @@ def test_login_margin_summarises_attempts_against_the_threshold():
 def test_login_margin_without_successes_has_no_margin():
     result = login_margin([(0, 0.1)], threshold=0.4)
     assert result["margin"] is None and result["mean_success_score"] is None
+
+
+STATS = {
+    "photo_cap": 20,
+    "detector_success_rate": 0.917,
+    "lfw": {"people": 5749, "single_photo_people": 4069, "usable_people": 1680,
+            "top_person": "George_W_Bush", "top_count": 530},
+    "kaggle": {
+        "total_images": 7219, "sampled": 1000,
+        "colour_modes": {"RGB": 969, "L": 18, "RGBA": 12, "P": 1},
+        "width_px": {"min": 236, "median": 633, "max": 7680},
+        "brightness_stats": {"mean": 120.3, "std": 38.9, "min": 31.0, "max": 232.6},
+    },
+}
+
+
+def test_dataset_stories_cover_at_least_three_features_with_real_numbers():
+    stories = dataset_stories(STATS)
+    assert len(stories) >= 3 and all({"feature", "story"} <= set(s) for s in stories)
+    text = " ".join(s["story"] for s in stories)
+    for fact in ["4,069", "70.8%", "1,680", "George W Bush", "530", "7,680", "633", "120", "91.7%"]:
+        assert fact in text, fact
+
+
+def test_dataset_stories_explain_why_each_finding_matters():
+    stories = {s["feature"]: s["story"] for s in dataset_stories(STATS)}
+    assert "cap" in stories["Photos per person"].lower()
+    assert "160" in stories["Image size"]
+    assert "augment" in stories["Lighting"].lower()
+
+
+def test_dataset_stories_tolerate_missing_sections():
+    assert dataset_stories({}) == []
+    assert len(dataset_stories({"detector_success_rate": 0.9})) == 1
