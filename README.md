@@ -6,7 +6,7 @@ has been up, what the data looks like, and lets anyone upload new faces and retr
 
 | | |
 |---|---|
-| **Video demo** | _TODO: YouTube link (added after deployment)_ |
+| **Video demo** | [YouTube link](https://youtu.be/ExjPYzjV4hc) |
 | **Live app** | https://h-igweze--faceunlock-faceunlock-web.us-east.modal.run (the first request after idle takes about 15 s to wake the container) |
 | **Repo** | https://github.com/hycienti/ml-pipeline-faceunlock |
 
