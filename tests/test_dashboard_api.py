@@ -128,3 +128,16 @@ def test_sample_faces_image(make_client, tmp_path):
     Image.new("RGB", (8, 8)).save(tmp_path / "s.jpg")
     response = make_client(SAMPLE_FACES_PATH=str(tmp_path / "s.jpg")).get("/api/sample-faces.jpg")
     assert response.status_code == 200 and response.mimetype == "image/jpeg"
+
+
+def test_dataset_stats_endpoint_adds_written_interpretations(make_client, tmp_path):
+    stats = {
+        "photo_cap": 20,
+        "detector_success_rate": 0.9,
+        "lfw": {"people": 100, "single_photo_people": 70, "usable_people": 30, "top_person": "A_B", "top_count": 9},
+    }
+    (tmp_path / "dataset_stats.json").write_text(json.dumps(stats))
+    data = make_client().get("/api/dataset-stats").get_json()
+    features = [s["feature"] for s in data["stories"]]
+    assert "Photos per person" in features and "Faces per photo" in features
+    assert "A B" in " ".join(s["story"] for s in data["stories"])

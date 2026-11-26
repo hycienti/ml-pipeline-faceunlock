@@ -8,6 +8,7 @@ from flask import Blueprint, abort, current_app, jsonify, send_file
 
 from app.auth import login_required
 from app.db import get_db
+from src.insights import dataset_stories
 
 bp = Blueprint("dashboard", __name__)
 
@@ -86,7 +87,9 @@ def metrics():
 @login_required
 def dataset_stats():
     stats = _read_json(current_app.config["DATASET_STATS_PATH"])
-    return jsonify({"available": True, **stats} if stats else {"available": False})
+    if not stats:
+        return jsonify({"available": False})
+    return jsonify({"available": True, **stats, "stories": dataset_stories(stats)})
 
 
 @bp.get("/api/sample-faces.jpg")

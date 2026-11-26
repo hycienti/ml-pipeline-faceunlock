@@ -92,6 +92,7 @@ async function loadData() {
   histogramChart("width-chart", d.kaggle.width, COLORS.blue);
   histogramChart("brightness-chart", d.kaggle.brightness, COLORS.amber);
   const modes = Object.entries(d.kaggle.colour_modes).map(([k, v]) => `${k}: ${v}`).join(", ");
+  $("stories").innerHTML = (d.stories || []).map((x) => `<article><h4>${x.feature}</h4><p>${x.story}</p></article>`).join("");
   $("data-notes").textContent = `LFW photos capped at ${d.photo_cap} per person. Face detector found exactly one face in ${pct(d.detector_success_rate)} of training photos. Kaggle set: ${d.kaggle.total_images} images (colour modes in a ${d.kaggle.sampled}-image sample: ${modes}).`;
 }
 
